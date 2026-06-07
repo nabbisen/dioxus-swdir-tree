@@ -318,7 +318,7 @@ dependencies = [
 
 [[package]]
 name = "dioxus-swdir-tree"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "dioxus",
  "dioxus-swdir-tree-core",
@@ -327,7 +327,7 @@ dependencies = [
 
 [[package]]
 name = "dioxus-swdir-tree-core"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "swdir",
  "tempfile",

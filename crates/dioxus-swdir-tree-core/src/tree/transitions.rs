@@ -277,10 +277,10 @@ impl DirectoryTree {
             }
 
             DragMsg::Exited(path) => {
-                if let Some(drag) = &mut self.drag {
-                    if drag.hovered_target.as_deref() == Some(path.as_path()) {
-                        drag.hovered_target = None;
-                    }
+                if let Some(drag) = &mut self.drag
+                    && drag.hovered_target.as_deref() == Some(path.as_path())
+                {
+                    drag.hovered_target = None;
                 }
                 DragOutcome::None
             }
