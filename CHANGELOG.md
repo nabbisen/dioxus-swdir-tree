@@ -100,3 +100,29 @@ First release: the framework-free core state machine (RFCs 001–003).
     boundaries, Left/Right tri-state behaviour, and the Escape no-op.
 
 [0.4.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.4.0
+
+## [0.5.0] - 2026-06-07
+
+### Added
+
+- **Drag and drop** (Feature 7, RFC 008):
+  - `DragState { sources, hovered_target, started_at, started_is_dir }` — the
+    active drag session held on `DirectoryTree`.
+  - `DragMsg` enum — `Pressed`, `Entered`, `Exited`, `Released`, `Cancelled`.
+  - `DragOutcome` enum — `None`, `Clicked { path, is_dir }`, `Completed { sources, destination }`.
+  - `DirectoryTree::on_drag_msg(msg) -> DragOutcome` — all five transitions
+    with correct target validity (component-wise prefix, not string prefix, S7.3).
+  - `DirectoryTree::drag_state() -> Option<&DragState>` accessor.
+  - `DirectoryTreeEvent::Drag(DragMsg)` variant — the single event channel
+    carries all gesture types.
+  - `Escape` key now live: `handle_key` returns `Drag(Cancelled)` when a
+    drag is active, `None` otherwise (completes S4.10 / S7.4).
+  - View: rows use `onmousedown`/`onmouseenter`/`onmouseleave`/`onmouseup`
+    (replaces RFC 006's `onclick` placeholder, per S7.2). Container
+    `onmouseup` fires `Cancelled` when mouse-up misses all rows.
+    `dx-swdir-row--drop-target` CSS class applied to the valid hovered target.
+    Fixed-position ghost badge shows dragging item count while drag is active.
+  - 15 integration tests covering S7.1–S7.6 including descendant validity,
+    out-of-order Exited guard, and Escape key duality.
+
+[0.5.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.5.0

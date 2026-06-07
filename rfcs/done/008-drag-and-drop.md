@@ -1,6 +1,6 @@
 # RFC 008 — Drag-and-drop
 
-**Status.** Proposed
+**Status.** Implemented (v0.5.0)
 **Tracks.** Feature 7 (`feature-specs.md` §7); drag transitions
 in `state-machine.md`; drag-state section of `data-model.md`.
 **Touches.** `crates/dioxus-swdir-tree-core/src/` — new

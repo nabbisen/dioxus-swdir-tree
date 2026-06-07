@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 
 use crate::cache::TreeCache;
 use crate::config::DisplayFilter;
+use crate::drag::{DragMsg, DragOutcome, DragState, is_valid_target};
 use crate::entry::LoadedEntry;
 use crate::node::TreeNode;
 use crate::scan::{LoadPayload, LoadedOutcome, ScanRequest};
@@ -205,5 +206,79 @@ pub(crate) fn refresh_from_cache(node: &mut TreeNode, cache: &TreeCache, filter:
     }
     for child in &mut node.children {
         refresh_from_cache(child, cache, filter);
+    }
+}
+
+// ── Drag transitions ──────────────────────────────────────────────────────────
+
+impl DirectoryTree {
+    /// React to a drag-and-drop gesture message.
+    ///
+    /// Returns a [`DragOutcome`] describing any side effect the host must
+    /// handle: deferred click selection or a completed drop. The tree
+    /// itself is mutated synchronously; the host performs any
+    /// filesystem operations.
+    pub fn on_drag_msg(&mut self, msg: DragMsg) -> DragOutcome {
+        match msg {
+            DragMsg::Pressed { path, is_dir } => {
+                let sources = if self.selected_paths.contains(&path) {
+                    self.selected_paths.clone()
+                } else {
+                    vec![path.clone()]
+                };
+                self.drag = Some(DragState {
+                    sources,
+                    hovered_target: None,
+                    started_at: path,
+                    started_is_dir: is_dir,
+                });
+                DragOutcome::None
+            }
+
+            DragMsg::Entered(path) => {
+                if self.drag.is_none() {
+                    return DragOutcome::None;
+                }
+                // Clone sources so we can release the drag borrow.
+                let sources = self.drag.as_ref().unwrap().sources.clone();
+                let is_dir = self.find(&path).map(|n| n.is_dir).unwrap_or(false);
+                let valid = is_valid_target(&path, &sources, is_dir);
+                self.drag.as_mut().unwrap().hovered_target = if valid { Some(path) } else { None };
+                DragOutcome::None
+            }
+
+            DragMsg::Exited(path) => {
+                if let Some(drag) = &mut self.drag {
+                    if drag.hovered_target.as_deref() == Some(path.as_path()) {
+                        drag.hovered_target = None;
+                    }
+                }
+                DragOutcome::None
+            }
+
+            DragMsg::Released(path) => {
+                let Some(drag) = self.drag.take() else {
+                    return DragOutcome::None;
+                };
+                if path == drag.started_at {
+                    // Same row: interpret as a click (S7.2).
+                    DragOutcome::Clicked {
+                        path,
+                        is_dir: drag.started_is_dir,
+                    }
+                } else {
+                    // Genuine drop.
+                    DragOutcome::Completed {
+                        sources: drag.sources,
+                        destination: path,
+                    }
+                }
+            }
+
+            DragMsg::Cancelled => {
+                self.drag = None;
+                DragOutcome::None
+            }
+        }
     }
 }

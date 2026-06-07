@@ -15,12 +15,12 @@ The folder an RFC lives in is the source of truth for its state.
 | [005](done/005-async-scanning.md) | Pluggable async scanning | v0.3.0 |
 | [006](done/006-dioxus-view-component.md) | Dioxus view component | v0.3.0 |
 | [007](done/007-keyboard-navigation.md) | Keyboard navigation | v0.4.0 |
+| [008](done/008-drag-and-drop.md) | Drag and drop | v0.5.0 |
 
 ## proposed/
 
 | RFC | Title | Target |
 |---|---|---|
-| [008](proposed/008-drag-and-drop.md) | Drag & drop | v0.5.0 |
 | [009](proposed/009-prefetch.md) | Prefetch | v0.6.0 |
 | [010](proposed/010-incremental-search.md) | Incremental search | v0.7.0 |
 | [011](proposed/011-icon-themes.md) | Icon themes | v0.7.0 |

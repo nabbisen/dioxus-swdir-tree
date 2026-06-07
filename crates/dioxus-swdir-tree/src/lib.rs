@@ -13,7 +13,7 @@
 //!                │                              │
 //!  on_event ◄────│    EventHandler              │  user gestures
 //!                └──────────────┬──────────────┘
-//!                               │ Toggled / Selected
+//!                               │ Toggled / Selected / Drag
 //!                               ▼
 //!                ┌─────────────────────────────┐
 //!   Signal.write │  DirectoryTree               │  pure state machine
@@ -32,7 +32,8 @@
 //! ```no_run
 //! # use dioxus::prelude::*;
 //! use dioxus_swdir_tree::{DirectoryTreeView, DirectoryTreeEvent, use_scan_driver};
-//! use dioxus_swdir_tree_core::{DirectoryTree, ThreadExecutor};
+//! use dioxus_swdir_tree_core::{DirectoryTree, SelectionMode, ThreadExecutor};
+//! use dioxus_swdir_tree_core::drag::DragOutcome;
 //! use std::sync::Arc;
 //!
 //! fn app() -> Element {
@@ -47,6 +48,13 @@
 //!         }
 //!         DirectoryTreeEvent::Selected { path, is_dir, mode } => {
 //!             tree.write().on_selected(&path, is_dir, mode);
+//!         }
+//!         DirectoryTreeEvent::Drag(msg) => {
+//!             let outcome = tree.write().on_drag_msg(msg);
+//!             if let DragOutcome::Clicked { path, is_dir } = outcome {
+//!                 tree.write().on_selected(&path, is_dir, SelectionMode::Replace);
+//!             }
+//!             // DragOutcome::Completed { sources, destination } → app handles it
 //!         }
 //!     };
 //!
@@ -64,7 +72,6 @@ pub mod style;
 mod row;
 mod view;
 
-// Re-export the component and hook at the crate root for ergonomics.
 pub use driver::use_scan_driver;
 pub use event::DirectoryTreeEvent;
 pub use view::DirectoryTreeView;

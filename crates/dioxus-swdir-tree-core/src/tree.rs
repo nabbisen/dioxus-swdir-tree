@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use crate::cache::TreeCache;
 use crate::config::{DisplayFilter, TreeConfig};
+use crate::drag::DragState;
 use crate::node::TreeNode;
 use crate::scan::{self, LoadedOutcome};
 use crate::selection;
@@ -31,6 +32,8 @@ pub struct DirectoryTree {
     /// Shift-range pivot. Set by Replace and Toggle; *not* moved by
     /// ExtendRange (S6.3).
     pub(crate) anchor_path: Option<PathBuf>,
+    /// Active drag session, or `None` when no drag is in progress.
+    pub(crate) drag: Option<DragState>,
 }
 
 impl DirectoryTree {
@@ -48,6 +51,7 @@ impl DirectoryTree {
             selected_paths: Vec::new(),
             active_path: None,
             anchor_path: None,
+            drag: None,
         }
     }
 
@@ -167,6 +171,11 @@ impl DirectoryTree {
     /// `node.is_selected`, which is a derived view hint.
     pub fn is_selected(&self, path: &Path) -> bool {
         self.selected_paths.iter().any(|p| p == path)
+    }
+
+    /// The active drag session, or `None` when no drag is in progress.
+    pub fn drag_state(&self) -> Option<&DragState> {
+        self.drag.as_ref()
     }
 }
 

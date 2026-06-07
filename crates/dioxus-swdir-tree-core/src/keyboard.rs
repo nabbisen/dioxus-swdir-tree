@@ -12,6 +12,7 @@
 use std::path::PathBuf;
 
 use crate::DirectoryTree;
+use crate::drag::DragMsg;
 use crate::event::DirectoryTreeEvent;
 use crate::selection::SelectionMode;
 
@@ -217,7 +218,14 @@ pub fn handle_key(
         }
 
         // ── Escape — unbound until drag (RFC 008) ────────────────────
-        (TreeKey::Escape, _) => None,
+        // ── Escape — cancels drag if active; unbound otherwise (S7.4)
+        (TreeKey::Escape, _) => {
+            if tree.drag_state().is_some() {
+                Some(DirectoryTreeEvent::Drag(DragMsg::Cancelled))
+            } else {
+                None
+            }
+        }
     }
 }
 

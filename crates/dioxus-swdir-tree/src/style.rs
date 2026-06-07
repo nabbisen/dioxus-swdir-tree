@@ -70,6 +70,11 @@ pub const DEFAULT_CSS: &str = r#"
     opacity: 0.55;
     font-style: italic;
 }
+.dx-swdir-row--drop-target {
+    outline: 2px dashed rgba(66, 133, 244, 0.7);
+    outline-offset: -2px;
+    background: rgba(66, 133, 244, 0.12);
+}
 .dx-swdir-caret {
     display: inline-block;
     width: 1em;

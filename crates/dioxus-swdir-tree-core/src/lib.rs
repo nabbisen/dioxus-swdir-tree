@@ -42,6 +42,7 @@
 
 pub mod cache;
 pub mod config;
+pub mod drag;
 pub mod entry;
 pub mod error;
 pub mod event;
@@ -54,6 +55,7 @@ pub mod tree;
 
 pub use cache::{CachedScan, TreeCache};
 pub use config::{DisplayFilter, TreeConfig};
+pub use drag::{DragMsg, DragOutcome, DragState};
 pub use entry::LoadedEntry;
 pub use error::ScanIssue;
 pub use event::DirectoryTreeEvent;
