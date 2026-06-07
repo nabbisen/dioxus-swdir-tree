@@ -199,3 +199,15 @@ First release: the framework-free core state machine (RFCs 001–003).
   - 7 integration tests covering S10.1–S10.7.
 
 [0.7.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.7.0
+
+## [0.7.1] - 2026-06-07
+
+### Changed
+
+- **MSRV raised from 1.85 to 1.87.** Rust 1.87 lifts the floor for
+  `wasip2` and `wit-bindgen` transitive dependencies, keeping the
+  full dependency graph current.
+  - `wasip2` updated 1.0.1+wasi-0.2.4 → 1.0.3+wasi-0.2.9
+  - `wit-bindgen` updated 0.46.0 → 0.57.1
+
+[0.7.1]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.7.1

@@ -79,7 +79,7 @@ follow-up RFC.
 
 ### Toolchain and conventions
 
-- Rust **2024 edition**, MSRV **1.85** (the edition floor;
+- Rust **2024 edition**, MSRV **1.87** (the edition floor;
   comfortably above dioxus 0.7's 1.83 requirement).
 - Rust 2018+ module style: `foo.rs` plus a `foo/` subdirectory
   for submodules; no `mod.rs`.
