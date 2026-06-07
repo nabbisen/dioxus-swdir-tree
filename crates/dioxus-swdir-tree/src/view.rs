@@ -2,6 +2,7 @@
 
 use dioxus::prelude::*;
 use dioxus_swdir_tree_core::DirectoryTree;
+use dioxus_swdir_tree_core::keyboard::{self, Modifiers as CoreMods, TreeKey};
 
 use crate::event::DirectoryTreeEvent;
 use crate::row::TreeRow;
@@ -56,8 +57,7 @@ pub fn DirectoryTreeView(
     tree: Signal<DirectoryTree>,
     on_event: EventHandler<DirectoryTreeEvent>,
 ) -> Element {
-    // Collect owned (cloned) rows so the `tree.read()` guard is dropped
-    // before entering `rsx!`.
+    // Collect owned rows so the `tree.read()` guard is dropped before rsx!.
     let rows: Vec<(dioxus_swdir_tree_core::TreeNode, u32)> = tree
         .read()
         .visible_rows()
@@ -65,12 +65,37 @@ pub fn DirectoryTreeView(
         .map(|(node, depth)| (node.clone(), depth))
         .collect();
 
-    // Prepare the optional default stylesheet. We build it outside rsx!
-    // because #[cfg] attributes are not valid inside the macro.
+    // Prepare the optional default stylesheet outside rsx! (cfg inside
+    // the macro is not supported).
     #[cfg(feature = "default-style")]
     let default_style_css = Some(s::DEFAULT_CSS);
     #[cfg(not(feature = "default-style"))]
     let default_style_css: Option<&str> = None;
+
+    // Keyboard handler: map Dioxus KeyboardEvent → TreeKey + Modifiers,
+    // call handle_key, call prevent_default only when a key was consumed.
+    let on_keydown = move |evt: KeyboardEvent| {
+        let tree_key = match evt.key() {
+            Key::ArrowUp => TreeKey::Up,
+            Key::ArrowDown => TreeKey::Down,
+            Key::Home => TreeKey::Home,
+            Key::End => TreeKey::End,
+            Key::Enter => TreeKey::Enter,
+            Key::ArrowLeft => TreeKey::Left,
+            Key::ArrowRight => TreeKey::Right,
+            Key::Escape => TreeKey::Escape,
+            Key::Character(ref s) if s == " " => TreeKey::Space,
+            _ => return, // unbound key — let the browser handle it
+        };
+        let mods = CoreMods {
+            shift: evt.modifiers().shift(),
+            ctrl: evt.modifiers().ctrl(),
+        };
+        if let Some(event) = keyboard::handle_key(&tree.read(), tree_key, mods) {
+            evt.prevent_default();
+            on_event.call(event);
+        }
+    };
 
     rsx! {
         if let Some(css) = default_style_css {
@@ -79,9 +104,8 @@ pub fn DirectoryTreeView(
 
         div {
             class: s::CLASS_TREE,
-            // tabindex="0" makes the container focusable so RFC 007
-            // can attach onkeydown.
             tabindex: "0",
+            onkeydown: on_keydown,
 
             for (node, depth) in rows {
                 TreeRow {

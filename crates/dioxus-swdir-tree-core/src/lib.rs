@@ -23,6 +23,7 @@
 //!
 //! ```no_run
 //! use dioxus_swdir_tree_core::{DirectoryTree, DisplayFilter, SelectionMode};
+//! use dioxus_swdir_tree_core::keyboard::{handle_key, TreeKey, Modifiers};
 //!
 //! let mut tree = DirectoryTree::new("/some/project")
 //!     .with_filter(DisplayFilter::FilesAndFolders);
@@ -33,21 +34,19 @@
 //! // Select the root:
 //! tree.on_selected(&tree.config().root_path.clone(), true, SelectionMode::Replace);
 //!
-//! for (node, depth) in tree.visible_rows() {
-//!     println!("{:indent$}{}{}", "",
-//!         if node.is_selected { "* " } else { "  " },
-//!         node.path.display(),
-//!         indent = depth as usize * 2);
+//! // Navigate down one row with the keyboard:
+//! if let Some(ev) = handle_key(&tree, TreeKey::Down, Modifiers::default()) {
+//!     println!("keyboard event: {ev:?}");
 //! }
 //! ```
-//!
-//! In a GUI, use [`DirectoryTree::on_toggled`] / [`DirectoryTree::on_loaded`]
-//! and run [`scan::run`] on a worker.
 
 pub mod cache;
 pub mod config;
 pub mod entry;
 pub mod error;
+pub mod event;
+pub mod executor;
+pub mod keyboard;
 pub mod node;
 pub mod scan;
 pub mod selection;
@@ -57,12 +56,13 @@ pub use cache::{CachedScan, TreeCache};
 pub use config::{DisplayFilter, TreeConfig};
 pub use entry::LoadedEntry;
 pub use error::ScanIssue;
+pub use event::DirectoryTreeEvent;
+pub use executor::{ScanExecutor, ScanFuture, ScanJob, ThreadExecutor};
+pub use keyboard::{Modifiers, TreeKey, handle_key};
 pub use node::TreeNode;
 pub use scan::{LoadPayload, LoadedOutcome, ScanRequest};
 pub use selection::SelectionMode;
 pub use tree::DirectoryTree;
 
-pub mod executor;
 #[cfg(test)]
 mod tests;
-pub use executor::{ScanExecutor, ScanFuture, ScanJob, ThreadExecutor};

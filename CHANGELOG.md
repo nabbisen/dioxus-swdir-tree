@@ -79,3 +79,24 @@ First release: the framework-free core state machine (RFCs 001–003).
     requires `dioxus` with `features = ["desktop"]`).
 
 [0.3.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.3.0
+
+## [0.4.0] - 2026-06-07
+
+### Added
+
+- **Keyboard navigation** (Feature 4, RFC 007):
+  - `TreeKey` enum — framework-neutral key representation (Up, Down,
+    Home, End, Enter, Space, Left, Right, Escape).
+  - `Modifiers` struct — `{ shift: bool, ctrl: bool }`.
+  - `handle_key(tree, key, mods) -> Option<DirectoryTreeEvent>` —
+    read-only; inspects `visible_rows()` and `active_path` to produce
+    the correct event for all ten S4.x bindings without mutating state.
+  - `DirectoryTreeEvent` moved from the view crate to `dioxus-swdir-tree-core`
+    (re-exported in both places — no breaking API change).
+  - `DirectoryTreeView` wires `onkeydown` on the focusable container:
+    maps Dioxus `KeyboardEvent` → `TreeKey`, calls `handle_key`, calls
+    `evt.prevent_default()` only when the key was consumed.
+  - 26 integration tests covering every S4.x clause including no-wrap
+    boundaries, Left/Right tri-state behaviour, and the Escape no-op.
+
+[0.4.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.4.0

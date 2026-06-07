@@ -1,6 +1,6 @@
 # RFC 007 — Keyboard navigation
 
-**Status.** Proposed
+**Status.** Implemented (v0.4.0)
 **Tracks.** Feature 4 (`feature-specs.md` §4).
 **Touches.** `crates/dioxus-swdir-tree-core/src/` — new
 `keyboard.rs` (`TreeKey`, `Modifiers`, `handle_key`);
