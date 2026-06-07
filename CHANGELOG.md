@@ -156,3 +156,46 @@ First release: the framework-free core state machine (RFCs 001–003).
     list, max_depth bound, and the user-wins race.
 
 [0.6.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.6.0
+
+## [0.7.0] - 2026-06-07
+
+**Feature parity with `iced-swdir-tree` 0.7** — all ten features implemented.
+
+### Added
+
+- **Incremental search** (Feature 9, RFC 010):
+  - `SearchState { query, query_lower, visible_paths, match_count }` held as
+    `Option<SearchState>` on the tree.
+  - `set_search_query(q)` — activates/updates the live filter; empty string
+    clears (S9.4). No I/O, no generation bump (S9.9).
+  - `clear_search()` — alias for `set_search_query("")`.
+  - `search_query() -> Option<&str>`, `search_state() -> Option<&SearchState>`,
+    `search_match_count() -> usize` accessors.
+  - `visible_rows()` dispatches on `visible_paths` when search is active;
+    descends into all loaded dirs regardless of `is_expanded` (S9.3). All
+    consumers (keyboard nav, range selection) automatically become search-aware.
+  - Search recomputes on `set_filter` (filter first, S9.6) and on every
+    accepted `on_loaded` (new children may match, S9.7).
+  - 12 integration tests covering S9.1–S9.9 including see-through-collapse,
+    filter+search composition, load-time recompute, and match count vs
+    visible count divergence.
+
+- **Icon themes** (Feature 10, RFC 011):
+  - `IconRole` — six logical icon positions (S10.1), `#[non_exhaustive]`
+    so minor releases may add roles (S10.2).
+  - `IconSpec { glyph: Cow<'static, str>, font: Option<&'static str>,
+    size: Option<f32> }` — CSS-native rendering spec (S10.3).
+  - `IconTheme` trait — object-safe (`Arc<dyn IconTheme>`), one method
+    (S10.7): `fn glyph(&self, role: IconRole) -> IconSpec`.
+  - `UnicodeTheme` — emoji glyphs in the ambient system font; default without
+    the `icons` feature (S10.5).
+  - `LucideTheme` — Lucide vector glyphs with `font: Some("lucide")`; default
+    with the `icons` feature (S10.5, S10.6). `LUCIDE_FONT_BYTES: &[u8]`
+    placeholder exported for app-side `@font-face` registration.
+  - `icons` feature on both crates; off by default.
+  - View: optional `theme: Option<ArcTheme>` prop on `DirectoryTreeView`;
+    rows render all six roles through the theme with correct `font-family` /
+    `font-size` CSS styles.
+  - 7 integration tests covering S10.1–S10.7.
+
+[0.7.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.7.0

@@ -17,13 +17,13 @@ The folder an RFC lives in is the source of truth for its state.
 | [007](done/007-keyboard-navigation.md) | Keyboard navigation | v0.4.0 |
 | [008](done/008-drag-and-drop.md) | Drag and drop | v0.5.0 |
 | [009](done/009-prefetch.md) | Prefetch | v0.6.0 |
+| [010](done/010-incremental-search.md) | Incremental search | v0.7.0 |
+| [011](done/011-icon-themes.md) | Icon themes | v0.7.0 |
 
 ## proposed/
 
-| RFC | Title | Target |
-|---|---|---|
-| [010](proposed/010-incremental-search.md) | Incremental search | v0.7.0 |
-| [011](proposed/011-icon-themes.md) | Icon themes | v0.7.0 |
+Empty — all eleven feature RFCs implemented. The next RFC will be the
+v1.0.0 API freeze review.
 
 ## archive/
 

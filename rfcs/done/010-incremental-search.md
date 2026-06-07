@@ -1,6 +1,6 @@
 # RFC 010 — Incremental search
 
-**Status.** Proposed
+**Status.** Implemented (v0.7.0)
 **Tracks.** Feature 9 (`feature-specs.md` §9); search-state
 section of `data-model.md`; search-aware `visible_rows()`
 dispatch in `state-machine.md`.

@@ -5,6 +5,8 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+use crate::search::{self, SearchState};
+
 use crate::cache::TreeCache;
 use crate::config::{DisplayFilter, TreeConfig};
 use crate::drag::DragState;
@@ -37,6 +39,8 @@ pub struct DirectoryTree {
     pub(crate) drag: Option<DragState>,
     /// Paths for which a speculative prefetch scan is in flight.
     pub(crate) prefetching_paths: HashSet<PathBuf>,
+    /// Active incremental search session, or `None` when search is inactive.
+    pub(crate) search: Option<crate::search::SearchState>,
 }
 
 impl DirectoryTree {
@@ -56,6 +60,7 @@ impl DirectoryTree {
             anchor_path: None,
             drag: None,
             prefetching_paths: HashSet::new(),
+            search: None,
         }
     }
 
@@ -123,7 +128,7 @@ impl DirectoryTree {
         self.config.filter = filter;
         transitions::refresh_from_cache(&mut self.root, &self.cache, filter);
         selection::sync_flags(&mut self.root, &self.selected_paths);
-        // Search recompute (RFC 010) hooks in here when it lands.
+        recompute_search_if_active(self); // S9.6 — filter first, then search
     }
 
     /// The ordered list of rows currently drawn: a depth-first pre-order
@@ -134,7 +139,11 @@ impl DirectoryTree {
     /// and range selection all consume this list, so they never diverge.
     pub fn visible_rows(&self) -> Vec<(&TreeNode, u32)> {
         let mut rows = Vec::new();
-        collect_rows(&self.root, 0, &mut rows);
+        if let Some(search) = &self.search {
+            collect_rows_search(&self.root, 0, &mut rows, &search.visible_paths);
+        } else {
+            collect_rows(&self.root, 0, &mut rows);
+        }
         rows
     }
 
@@ -198,6 +207,53 @@ impl DirectoryTree {
         &self.prefetching_paths
     }
 
+    // ── Search accessors and mutation ─────────────────────────────────────
+
+    /// The active search query, or `None` when search is inactive.
+    pub fn search_query(&self) -> Option<&str> {
+        self.search.as_ref().map(|s| s.query.as_str())
+    }
+
+    /// The active search state (query, visible paths, match count), or
+    /// `None` when search is inactive.
+    pub fn search_state(&self) -> Option<&SearchState> {
+        self.search.as_ref()
+    }
+
+    /// Number of **direct** basename matches (S9.8). Use this for "N
+    /// results" displays; ancestor rows shown for context are excluded.
+    pub fn search_match_count(&self) -> usize {
+        self.search.as_ref().map_or(0, |s| s.match_count)
+    }
+
+    /// Activate or update the incremental search filter (S9.1–S9.9).
+    ///
+    /// An empty string clears the search (S9.4). Search never triggers
+    /// I/O — it filters only the already-loaded node graph (S9.9).
+    pub fn set_search_query(&mut self, query: &str) {
+        if query.is_empty() {
+            self.search = None;
+            return;
+        }
+        let query_lower = query.to_ascii_lowercase();
+        let mut visible = HashSet::new();
+        let mut match_count = 0;
+        search::walk_for_search(&self.root, &query_lower, &mut visible, &mut match_count);
+        self.search = Some(SearchState {
+            query: query.to_string(),
+            query_lower,
+            visible_paths: visible,
+            match_count,
+        });
+    }
+
+    /// Clear the active search and return to normal tree view.
+    ///
+    /// Equivalent to `set_search_query("")` (S9.4).
+    pub fn clear_search(&mut self) {
+        self.search = None;
+    }
+
     /// The active drag session, or `None` when no drag is in progress.
     pub fn drag_state(&self) -> Option<&DragState> {
         self.drag.as_ref()
@@ -210,5 +266,40 @@ fn collect_rows<'a>(node: &'a TreeNode, depth: u32, rows: &mut Vec<(&'a TreeNode
         for child in &node.children {
             collect_rows(child, depth + 1, rows);
         }
+    }
+}
+
+/// Search-mode row collection: gates on `visible_paths`, descends into all
+/// loaded directories regardless of `is_expanded` (S9.3 — sees through collapse).
+fn collect_rows_search<'a>(
+    node: &'a TreeNode,
+    depth: u32,
+    rows: &mut Vec<(&'a TreeNode, u32)>,
+    visible_paths: &std::collections::HashSet<std::path::PathBuf>,
+) {
+    if !visible_paths.contains(&node.path) {
+        return;
+    }
+    rows.push((node, depth));
+    if node.is_dir && node.is_loaded {
+        for child in &node.children {
+            collect_rows_search(child, depth + 1, rows, visible_paths);
+        }
+    }
+}
+
+/// Recompute search visibility when search is active and the node graph
+/// has changed (S9.6, S9.7).
+pub(crate) fn recompute_search_if_active(tree: &mut DirectoryTree) {
+    let query_lower = match &tree.search {
+        Some(s) => s.query_lower.clone(),
+        None => return,
+    };
+    let mut visible = HashSet::new();
+    let mut match_count = 0;
+    search::walk_for_search(&tree.root, &query_lower, &mut visible, &mut match_count);
+    if let Some(s) = &mut tree.search {
+        s.visible_paths = visible;
+        s.match_count = match_count;
     }
 }

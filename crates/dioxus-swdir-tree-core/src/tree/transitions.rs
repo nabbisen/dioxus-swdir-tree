@@ -121,7 +121,8 @@ impl DirectoryTree {
 
         // Step 5 — selection-flag sync.
         selection::sync_flags(&mut self.root, &self.selected_paths);
-        // Step 6 — search recompute (RFC 010) hooks in here.
+        // Step 6 — search recompute (S9.7: new children may match).
+        crate::tree::recompute_search_if_active(self);
 
         // Step 7 — prefetch cascade check.
         if self.prefetching_paths.remove(&payload.path) {

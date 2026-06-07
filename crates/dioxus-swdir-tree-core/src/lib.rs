@@ -47,9 +47,11 @@ pub mod entry;
 pub mod error;
 pub mod event;
 pub mod executor;
+pub mod icon;
 pub mod keyboard;
 pub mod node;
 pub mod scan;
+pub mod search;
 pub mod selection;
 pub mod tree;
 
@@ -60,9 +62,13 @@ pub use entry::LoadedEntry;
 pub use error::ScanIssue;
 pub use event::DirectoryTreeEvent;
 pub use executor::{ScanExecutor, ScanFuture, ScanJob, ThreadExecutor};
+pub use icon::{IconRole, IconSpec, IconTheme, UnicodeTheme};
+#[cfg(feature = "icons")]
+pub use icon::{LUCIDE_FONT_BYTES, LucideTheme};
 pub use keyboard::{Modifiers, TreeKey, handle_key};
 pub use node::TreeNode;
 pub use scan::{LoadPayload, LoadedOutcome, ScanRequest};
+pub use search::SearchState;
 pub use selection::SelectionMode;
 pub use tree::DirectoryTree;
 

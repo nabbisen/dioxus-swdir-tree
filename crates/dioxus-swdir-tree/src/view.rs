@@ -5,11 +5,11 @@ use dioxus_swdir_tree_core::keyboard::{self, Modifiers as CoreMods, TreeKey};
 use dioxus_swdir_tree_core::{DirectoryTree, DragMsg};
 
 use crate::event::DirectoryTreeEvent;
-use crate::row::TreeRow;
+use crate::row::{ArcTheme, TreeRow, default_theme};
 use crate::style as s;
 
-/// A lazy-loading, filterable, keyboard-navigable, drag-and-drop directory
-/// tree explorer widget for Dioxus.
+/// A lazy-loading, filterable, keyboard-navigable, drag-and-drop,
+/// search-aware directory-tree explorer widget for Dioxus.
 ///
 /// # Props
 ///
@@ -17,51 +17,23 @@ use crate::style as s;
 /// |---|---|---|
 /// | `tree` | `Signal<DirectoryTree>` | The tree state. |
 /// | `on_event` | `EventHandler<DirectoryTreeEvent>` | Receives every interaction. |
+/// | `theme` | `Option<ArcTheme>` | Icon theme; defaults to `UnicodeTheme` (or `LucideTheme` with the `icons` feature). |
 ///
-/// # Host responsibilities
-///
-/// ```no_run
-/// # use dioxus::prelude::*;
-/// # use dioxus_swdir_tree::{DirectoryTreeView, DirectoryTreeEvent, use_scan_driver};
-/// # use dioxus_swdir_tree_core::{DirectoryTree, SelectionMode, ThreadExecutor};
-/// # use dioxus_swdir_tree_core::drag::DragOutcome;
-/// # use std::sync::Arc;
-/// fn app() -> Element {
-///     let mut tree = use_signal(|| DirectoryTree::new("/home"));
-///     let scans = use_scan_driver(tree, Arc::new(ThreadExecutor));
-///
-///     let on_event = move |ev: DirectoryTreeEvent| match ev {
-///         DirectoryTreeEvent::Toggled(path) => {
-///             if let Some(req) = tree.write().on_toggled(&path) {
-///                 scans.send(req);
-///             }
-///         }
-///         DirectoryTreeEvent::Selected { path, is_dir, mode } => {
-///             tree.write().on_selected(&path, is_dir, mode);
-///         }
-///         DirectoryTreeEvent::Drag(msg) => {
-///             let outcome = tree.write().on_drag_msg(msg);
-///             if let DragOutcome::Clicked { path, is_dir } = outcome {
-///                 tree.write().on_selected(&path, is_dir, SelectionMode::Replace);
-///             }
-///         }
-///     };
-///
-///     rsx! { DirectoryTreeView { tree, on_event } }
-/// }
-/// ```
+/// See the crate README for a full wiring example.
 #[component]
 pub fn DirectoryTreeView(
     tree: Signal<DirectoryTree>,
     on_event: EventHandler<DirectoryTreeEvent>,
+    #[props(optional)] theme: Option<ArcTheme>,
 ) -> Element {
+    let theme = theme.unwrap_or_else(default_theme);
+
     let t = tree.read();
     let rows: Vec<(dioxus_swdir_tree_core::TreeNode, u32)> = t
         .visible_rows()
         .into_iter()
         .map(|(node, depth)| (node.clone(), depth))
         .collect();
-    // Clone drag state so we can drop the read guard before rsx!
     let drag = t.drag_state().cloned();
     let drag_active = drag.is_some();
     drop(t);
@@ -71,7 +43,6 @@ pub fn DirectoryTreeView(
     #[cfg(not(feature = "default-style"))]
     let default_style_css: Option<&str> = None;
 
-    // Keyboard handler: map Dioxus Key → TreeKey, call handle_key.
     let on_keydown = move |evt: KeyboardEvent| {
         let tree_key = match evt.key() {
             Key::ArrowUp => TreeKey::Up,
@@ -95,8 +66,6 @@ pub fn DirectoryTreeView(
         }
     };
 
-    // Container mouse-up fallback: fires when mouse-up is not over a row
-    // (row's onmouseup calls stop_propagation). Cancels any active drag.
     let on_container_mouseup = move |_evt: MouseEvent| {
         if drag_active {
             on_event.call(DirectoryTreeEvent::Drag(DragMsg::Cancelled));
@@ -108,8 +77,6 @@ pub fn DirectoryTreeView(
             style { "{css}" }
         }
 
-        // Ghost badge: shown at fixed position while drag is active.
-        // Pointer-events: none so it doesn't block row hover events.
         if let Some(ref d) = drag {
             div {
                 style: "
@@ -136,6 +103,7 @@ pub fn DirectoryTreeView(
                     depth,
                     on_event,
                     drag: drag.clone(),
+                    theme: theme.clone(),
                 }
             }
         }

@@ -16,6 +16,8 @@ default = ["default-style"]
 # Bundle a small baseline stylesheet (dx-swdir-* class names).
 # Disable to take full control of theming.
 default-style = []
+# Lucide vector icon theme. Requires Lucide TTF font registration.
+icons = ["dioxus-swdir-tree-core/icons"]
 
 [dependencies]
 dioxus-swdir-tree-core = { workspace = true }

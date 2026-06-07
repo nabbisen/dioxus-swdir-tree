@@ -74,6 +74,7 @@ mod view;
 
 pub use driver::use_scan_driver;
 pub use event::DirectoryTreeEvent;
+pub use row::{ArcTheme, default_theme};
 pub use view::DirectoryTreeView;
 
 // Re-export everything from core so application code can depend on this

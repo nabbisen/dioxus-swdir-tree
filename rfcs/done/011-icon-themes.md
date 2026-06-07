@@ -1,6 +1,6 @@
 # RFC 011 — Icon themes
 
-**Status.** Proposed
+**Status.** Implemented (v0.7.0)
 **Tracks.** Feature 10 (`feature-specs.md` §10); icon-theme
 section of `data-model.md`; the `iced::Font` → CSS decoupling
 mandated by `porting-to-dioxus.md`.
