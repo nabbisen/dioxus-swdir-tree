@@ -22,15 +22,22 @@
 //! # Quick start (blocking helper)
 //!
 //! ```no_run
-//! use dioxus_swdir_tree_core::{DirectoryTree, DisplayFilter};
+//! use dioxus_swdir_tree_core::{DirectoryTree, DisplayFilter, SelectionMode};
 //!
 //! let mut tree = DirectoryTree::new("/some/project")
 //!     .with_filter(DisplayFilter::FilesAndFolders);
 //!
 //! // Synchronous convenience path (tests, scripts, examples):
 //! tree.expand_blocking(&tree.config().root_path.clone());
+//!
+//! // Select the root:
+//! tree.on_selected(&tree.config().root_path.clone(), true, SelectionMode::Replace);
+//!
 //! for (node, depth) in tree.visible_rows() {
-//!     println!("{:indent$}{}", "", node.path.display(), indent = depth as usize * 2);
+//!     println!("{:indent$}{}{}", "",
+//!         if node.is_selected { "* " } else { "  " },
+//!         node.path.display(),
+//!         indent = depth as usize * 2);
 //! }
 //! ```
 //!
@@ -43,6 +50,7 @@ pub mod entry;
 pub mod error;
 pub mod node;
 pub mod scan;
+pub mod selection;
 pub mod tree;
 
 pub use cache::{CachedScan, TreeCache};
@@ -51,6 +59,7 @@ pub use entry::LoadedEntry;
 pub use error::ScanIssue;
 pub use node::TreeNode;
 pub use scan::{LoadPayload, LoadedOutcome, ScanRequest};
+pub use selection::SelectionMode;
 pub use tree::DirectoryTree;
 
 #[cfg(test)]

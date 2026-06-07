@@ -34,3 +34,22 @@ First release: the framework-free core state machine (RFCs 001–003).
   incremental search, and icon themes.
 
 [0.1.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/0.1.0
+
+## [0.2.0] - 2026-06-07
+
+### Added
+
+- **Selection model** (Feature 3 + Feature 6, RFC 004):
+  - `SelectionMode` enum (`Replace` / `Toggle` / `ExtendRange`).
+  - `DirectoryTree::on_selected(path, is_dir, mode)` — all three modes,
+    anchor semantics, and per-call flag sync.
+  - `selected_paths() -> &[PathBuf]` — insertion-ordered, duplicate-free.
+  - `selected_path() -> Option<&Path>` — `active_path` view (S3.3).
+  - `is_selected(&Path) -> bool` — authoritative query.
+  - `TreeNode::is_selected` — derived view hint, re-synced by every
+    selection mutation, `on_loaded` merge, and `set_filter` call.
+  - Selection survives filter changes, node rebuilds, and re-merges
+    (selected paths stay authoritative even while their nodes are
+    filtered out or not yet loaded).
+
+[0.2.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.2.0

@@ -56,3 +56,17 @@ pub fn child_names(node: &dioxus_swdir_tree_core::TreeNode) -> Vec<String> {
 pub fn names_at(tree: &dioxus_swdir_tree_core::DirectoryTree, path: &Path) -> Vec<String> {
     tree.find(path).map(child_names).unwrap_or_default()
 }
+
+/// Execute a [`dioxus_swdir_tree_core::ScanRequest`] in a way that threads
+/// the tree's current generation through, so S6.5 can test that a
+/// re-merge after a fresh scan preserves selection.
+///
+/// This is just `scan::run` re-exported with an explicit tree borrow
+/// to make the call site more readable.
+#[allow(dead_code)]
+pub fn fixture_scan_run(
+    _tree: &dioxus_swdir_tree_core::DirectoryTree,
+    request: &dioxus_swdir_tree_core::ScanRequest,
+) -> dioxus_swdir_tree_core::LoadPayload {
+    dioxus_swdir_tree_core::scan::run(request)
+}

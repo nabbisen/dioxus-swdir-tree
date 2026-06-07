@@ -32,6 +32,13 @@ pub struct TreeNode {
     pub is_expanded: bool,
     /// `true` once a scan has populated (or errored) this node.
     pub is_loaded: bool,
+    /// Derived view hint: `true` iff this path is in the tree's
+    /// [`crate::DirectoryTree::selected_paths`] set.
+    ///
+    /// Re-synced after every selection mutation; never authoritative —
+    /// paths remain selected while their node is unloaded, filtered out,
+    /// or temporarily absent.
+    pub is_selected: bool,
     /// Filtered children; empty until loaded.
     pub children: Vec<TreeNode>,
     /// Set when the scan for this directory failed.
@@ -47,6 +54,7 @@ impl TreeNode {
             is_dir: true,
             is_expanded: false,
             is_loaded: false,
+            is_selected: false,
             children: Vec::new(),
             error: None,
         }
@@ -59,6 +67,7 @@ impl TreeNode {
             is_dir: entry.is_dir,
             is_expanded: false,
             is_loaded: false,
+            is_selected: false,
             children: Vec::new(),
             error: None,
         }

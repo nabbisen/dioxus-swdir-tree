@@ -1,7 +1,7 @@
 //! State transitions of the lazy-loading state machine.
 //!
-//! Both transitions mutate synchronously and return side effects as
-//! data; neither blocks on I/O nor spawns tasks.
+//! Transitions mutate synchronously and return side effects as data;
+//! none of them block on I/O or spawn tasks.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -11,6 +11,7 @@ use crate::config::DisplayFilter;
 use crate::entry::LoadedEntry;
 use crate::node::TreeNode;
 use crate::scan::{LoadPayload, LoadedOutcome, ScanRequest};
+use crate::selection::{self, SelectionMode};
 use crate::tree::DirectoryTree;
 
 impl DirectoryTree {
@@ -82,6 +83,7 @@ impl DirectoryTree {
     /// raw unfiltered entries are cached for zero-I/O filter switching,
     /// and the node is marked loaded. A failed scan stores the
     /// [`crate::ScanIssue`] on the node with an empty child list.
+    /// Selection flags are re-synced after every accepted merge (S6.4).
     pub fn on_loaded(&mut self, payload: LoadPayload) -> LoadedOutcome {
         // Step 1 — staleness check.
         if payload.generation != self.generation {
@@ -94,7 +96,7 @@ impl DirectoryTree {
             return LoadedOutcome::discarded();
         };
 
-        // Step 3 — merge; step 4 — cache raw entries.
+        // Steps 3–4 — merge; cache raw entries.
         match payload.result {
             Ok(entries) => {
                 rebuild_children(node, &entries, filter);
@@ -109,10 +111,61 @@ impl DirectoryTree {
             }
         }
 
-        // Steps 5–7 — selection sync (RFC 004), search recompute
-        // (RFC 010), prefetch cascade (RFC 009) — hook in here when
-        // those features land.
+        // Step 5 — selection-flag sync (RFC 004).
+        selection::sync_flags(&mut self.root, &self.selected_paths);
+        // Search recompute (RFC 010) and prefetch cascade (RFC 009)
+        // hook in here when those features land.
         LoadedOutcome::accepted()
+    }
+
+    /// React to a selection gesture on `path`.
+    ///
+    /// All modes set `active_path` and end with a flag sync. No I/O is
+    /// performed; no `ScanRequest` is returned. The caller must issue
+    /// a separate `on_toggled` to expand the directory if needed.
+    ///
+    /// `is_dir` is required by future RFC 006 to distinguish file and
+    /// folder icons; the core does not gate behaviour on it here.
+    pub fn on_selected(&mut self, path: &Path, _is_dir: bool, mode: SelectionMode) {
+        let path = path.to_path_buf();
+        self.active_path = Some(path.clone());
+
+        match mode {
+            SelectionMode::Replace => {
+                self.selected_paths = vec![path.clone()];
+                self.anchor_path = Some(path);
+            }
+
+            SelectionMode::Toggle => {
+                if let Some(pos) = self.selected_paths.iter().position(|p| p == &path) {
+                    self.selected_paths.remove(pos);
+                } else {
+                    self.selected_paths.push(path.clone());
+                }
+                self.anchor_path = Some(path);
+            }
+
+            SelectionMode::ExtendRange => {
+                let Some(anchor) = self.anchor_path.clone() else {
+                    // No anchor: behave as Replace.
+                    self.selected_paths = vec![path.clone()];
+                    self.anchor_path = Some(path);
+                    selection::sync_flags(&mut self.root, &self.selected_paths);
+                    return;
+                };
+                let rows = self.visible_rows();
+                let anchor_idx = rows.iter().position(|(n, _)| n.path == anchor);
+                let target_idx = rows.iter().position(|(n, _)| n.path == path);
+                if let (Some(a), Some(t)) = (anchor_idx, target_idx) {
+                    let (lo, hi) = if a <= t { (a, t) } else { (t, a) };
+                    self.selected_paths =
+                        rows[lo..=hi].iter().map(|(n, _)| n.path.clone()).collect();
+                }
+                // anchor_path intentionally unchanged (S6.3).
+            }
+        }
+
+        selection::sync_flags(&mut self.root, &self.selected_paths);
     }
 }
 

@@ -8,20 +8,29 @@ use crate::cache::TreeCache;
 use crate::config::{DisplayFilter, TreeConfig};
 use crate::node::TreeNode;
 use crate::scan::{self, LoadedOutcome};
+use crate::selection;
 
 pub(crate) mod transitions;
 
 /// The directory-tree widget state.
 ///
 /// Owns UI state only — which folders are open, what has loaded, the
-/// active filter. It never creates, deletes, renames, moves, or writes
-/// anything on disk; filesystem operations belong to the application.
+/// active filter, and the selection set. It never creates, deletes,
+/// renames, moves, or writes anything on disk; filesystem operations
+/// belong to the application.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DirectoryTree {
     pub(crate) root: TreeNode,
     pub(crate) config: TreeConfig,
     pub(crate) cache: TreeCache,
     pub(crate) generation: u32,
+    /// Insertion-ordered, duplicate-free authoritative selection set.
+    pub(crate) selected_paths: Vec<PathBuf>,
+    /// Most recently touched path (focus / active styling).
+    pub(crate) active_path: Option<PathBuf>,
+    /// Shift-range pivot. Set by Replace and Toggle; *not* moved by
+    /// ExtendRange (S6.3).
+    pub(crate) anchor_path: Option<PathBuf>,
 }
 
 impl DirectoryTree {
@@ -36,6 +45,9 @@ impl DirectoryTree {
             config,
             cache: TreeCache::default(),
             generation: 0,
+            selected_paths: Vec::new(),
+            active_path: None,
+            anchor_path: None,
         }
     }
 
@@ -92,15 +104,18 @@ impl DirectoryTree {
     /// Switch the display filter, re-deriving every loaded node's child
     /// list from the cache. Instant; **issues no I/O** and does not bump
     /// the generation. Expansion and loaded state survive (children are
-    /// path-matched against the previous node graph).
+    /// path-matched against the previous node graph). Selection flags
+    /// are re-synced so that paths hidden by the new filter remain
+    /// selected but their nodes' `is_selected` reflects reality once
+    /// visible again (S2.6 / S6.4).
     pub fn set_filter(&mut self, filter: DisplayFilter) {
         if filter == self.config.filter {
             return;
         }
         self.config.filter = filter;
         transitions::refresh_from_cache(&mut self.root, &self.cache, filter);
-        // Selection-flag sync (RFC 004) and search recompute (RFC 010)
-        // hook in here when those features land.
+        selection::sync_flags(&mut self.root, &self.selected_paths);
+        // Search recompute (RFC 010) hooks in here when it lands.
     }
 
     /// The ordered list of rows currently drawn: a depth-first pre-order
@@ -128,6 +143,30 @@ impl DirectoryTree {
         let request = self.on_toggled(path)?;
         let payload = scan::run(&request);
         Some(self.on_loaded(payload))
+    }
+
+    // ── Selection accessors ────────────────────────────────────────────
+
+    /// The full insertion-ordered selection set (S6.x).
+    pub fn selected_paths(&self) -> &[PathBuf] {
+        &self.selected_paths
+    }
+
+    /// The single-select view: the most recently touched path (S3.3).
+    ///
+    /// Returns `None` before any selection gesture. This is *not*
+    /// the last element of `selected_paths`; it is `active_path`,
+    /// which the component renders with the distinct "active" style.
+    pub fn selected_path(&self) -> Option<&Path> {
+        self.active_path.as_deref()
+    }
+
+    /// `true` iff `path` is in the selection set.
+    ///
+    /// This is the authoritative query; prefer it over reading
+    /// `node.is_selected`, which is a derived view hint.
+    pub fn is_selected(&self, path: &Path) -> bool {
+        self.selected_paths.iter().any(|p| p == path)
     }
 }
 

@@ -1,6 +1,6 @@
 # RFC 004 — Selection model: single and multi-select
 
-**Status.** Proposed
+**Status.** Implemented (v0.2.0)
 **Tracks.** Features 3 (single-path selection) and 6
 (multi-select) from `feature-specs.md` §3 and §6;
 selection-state section of `data-model.md`.
