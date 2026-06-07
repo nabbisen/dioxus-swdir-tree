@@ -1,0 +1,36 @@
+# Changelog
+
+All notable changes to this project are documented here. The format is based
+on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
+adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.0] - 2026-06-07
+
+First release: the framework-free core state machine (RFCs 001–003).
+
+### Added
+
+- **Workspace** with two crates: `dioxus-swdir-tree-core` (state machine,
+  depends only on `swdir ^0.11`) and `dioxus-swdir-tree` (flagship crate,
+  currently a re-export of the core; the Dioxus component lands in v0.3.0).
+- **Lazy loading** (Feature 1): `DirectoryTree::on_toggled` covering all four
+  toggle cases, optimistic expansion, one-level non-recursive scans via
+  `scan::run`, and `on_loaded` merging with the generation protocol —
+  strict-equality staleness checks, silent discard of stale payloads,
+  `max_depth` capping, and sticky (non-auto-retried) error nodes.
+- **Display filters** (Feature 2): `FoldersOnly`, `FilesAndFolders` (default),
+  `AllIncludingHidden`; hiddenness derived at scan time (dotfiles on Unix,
+  `FILE_ATTRIBUTE_HIDDEN` or dotfile on Windows); `set_filter` rebuilds from
+  the raw-entry `TreeCache` with zero I/O while preserving expansion state.
+- **Row model**: `visible_rows()` — the single flat, depth-annotated draw list
+  that rendering, keyboard navigation, and range selection will all share.
+- **Test-oracle suite**: 13 integration tests named after specification
+  clauses S1.1–S1.6 and S2.1–S2.7 (S2.6 deferred to RFC 004 with the selection
+  model), plus unit tests and doctests. `expand_blocking` ports upstream's
+  `__test_expand_blocking` as a supported public helper.
+- **Design record**: RFC lifecycle policy adopted (RFC 000); RFCs 001–003
+  implemented; RFCs 004–011 proposed, covering selection, async executors, the
+  Dioxus view component, keyboard navigation, drag & drop, prefetch,
+  incremental search, and icon themes.
+
+[0.1.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/0.1.0

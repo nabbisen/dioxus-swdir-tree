@@ -1,0 +1,57 @@
+//! Framework-free state machine for a lazy-loading directory-tree widget.
+//!
+//! This crate powers the `dioxus-swdir-tree` widget crate but depends on no UI framework
+//! and no async runtime. It models a navigable tree of files and
+//! directories over the [`swdir`] crate's single-level `scan_dir`
+//! primitive, following the design documents of `iced-swdir-tree` v0.7.
+//!
+//! # Architecture
+//!
+//! State transitions are synchronous methods on [`DirectoryTree`]. They
+//! never block on I/O and never spawn tasks; instead, transitions that
+//! require disk access return a [`ScanRequest`] **as data**. The caller —
+//! a Dioxus coroutine, a thread pool, or a test — executes the request
+//! (see [`scan::run`]) off the UI thread and feeds the resulting
+//! [`LoadPayload`] back through [`DirectoryTree::on_loaded`].
+//!
+//! Every scan is tagged with a wrapping `u32` generation. A result is
+//! merged if and only if its generation strictly equals the tree's
+//! current counter; anything else is stale and silently discarded. This
+//! makes the widget safe against out-of-order delivery.
+//!
+//! # Quick start (blocking helper)
+//!
+//! ```no_run
+//! use dioxus_swdir_tree_core::{DirectoryTree, DisplayFilter};
+//!
+//! let mut tree = DirectoryTree::new("/some/project")
+//!     .with_filter(DisplayFilter::FilesAndFolders);
+//!
+//! // Synchronous convenience path (tests, scripts, examples):
+//! tree.expand_blocking(&tree.config().root_path.clone());
+//! for (node, depth) in tree.visible_rows() {
+//!     println!("{:indent$}{}", "", node.path.display(), indent = depth as usize * 2);
+//! }
+//! ```
+//!
+//! In a GUI, use [`DirectoryTree::on_toggled`] / [`DirectoryTree::on_loaded`]
+//! and run [`scan::run`] on a worker.
+
+pub mod cache;
+pub mod config;
+pub mod entry;
+pub mod error;
+pub mod node;
+pub mod scan;
+pub mod tree;
+
+pub use cache::{CachedScan, TreeCache};
+pub use config::{DisplayFilter, TreeConfig};
+pub use entry::LoadedEntry;
+pub use error::ScanIssue;
+pub use node::TreeNode;
+pub use scan::{LoadPayload, LoadedOutcome, ScanRequest};
+pub use tree::DirectoryTree;
+
+#[cfg(test)]
+mod tests;

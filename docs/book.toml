@@ -1,0 +1,8 @@
+[book]
+title = "dioxus-swdir-tree"
+authors = ["nabbisen"]
+language = "en"
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/nabbisen/dioxus-swdir-tree"

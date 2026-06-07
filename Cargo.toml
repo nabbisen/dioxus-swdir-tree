@@ -1,0 +1,20 @@
+[workspace]
+resolver = "3"
+members = ["crates/dioxus-swdir-tree-core", "crates/dioxus-swdir-tree"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+authors = ["nabbisen"]
+repository = "https://github.com/nabbisen/dioxus-swdir-tree"
+keywords = ["dioxus", "widget", "file-tree", "directory", "explorer"]
+categories = ["gui", "filesystem"]
+
+[workspace.dependencies]
+dioxus-swdir-tree-core = { version = "0.1.0", path = "crates/dioxus-swdir-tree-core" }
+swdir = "0.11"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
