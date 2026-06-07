@@ -2,6 +2,7 @@
 //! embedding layer calls. State transitions live in the private
 //! `tree::transitions` submodule.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::cache::TreeCache;
@@ -34,6 +35,8 @@ pub struct DirectoryTree {
     pub(crate) anchor_path: Option<PathBuf>,
     /// Active drag session, or `None` when no drag is in progress.
     pub(crate) drag: Option<DragState>,
+    /// Paths for which a speculative prefetch scan is in flight.
+    pub(crate) prefetching_paths: HashSet<PathBuf>,
 }
 
 impl DirectoryTree {
@@ -52,6 +55,7 @@ impl DirectoryTree {
             active_path: None,
             anchor_path: None,
             drag: None,
+            prefetching_paths: HashSet::new(),
         }
     }
 
@@ -171,6 +175,27 @@ impl DirectoryTree {
     /// `node.is_selected`, which is a derived view hint.
     pub fn is_selected(&self, path: &Path) -> bool {
         self.selected_paths.iter().any(|p| p == path)
+    }
+
+    /// Builder: enable prefetch — after each user-initiated scan, speculatively
+    /// scan up to `n` direct folder-children (S8.2). `0` disables prefetch.
+    pub fn with_prefetch_limit(mut self, n: u32) -> Self {
+        self.config.prefetch_per_parent = n;
+        self
+    }
+
+    /// Builder: replace the prefetch skip list (S8.5).
+    ///
+    /// Entries are compared ASCII case-insensitively against each candidate
+    /// child's basename. Defaults to [`crate::config::DEFAULT_PREFETCH_SKIP`].
+    pub fn with_prefetch_skip(mut self, skip: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.config.prefetch_skip = skip.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Paths for which a speculative prefetch scan is currently in flight.
+    pub fn prefetching_paths(&self) -> &HashSet<PathBuf> {
+        &self.prefetching_paths
     }
 
     /// The active drag session, or `None` when no drag is in progress.

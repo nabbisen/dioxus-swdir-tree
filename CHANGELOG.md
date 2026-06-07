@@ -126,3 +126,33 @@ First release: the framework-free core state machine (RFCs 001–003).
     out-of-order Exited guard, and Escape key duality.
 
 [0.5.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.5.0
+
+## [0.6.0] - 2026-06-07
+
+### Added
+
+- **Prefetch / parallel pre-expansion** (Feature 8, RFC 009):
+  - `TreeConfig::prefetch_per_parent: u32` (default `0` — disabled, S8.1).
+  - `TreeConfig::prefetch_skip: Vec<String>` — default skip list (S8.5):
+    `.git`, `.hg`, `.svn`, `node_modules`, `__pycache__`, `.venv`, `venv`,
+    `target`, `build`, `dist` (exported as `DEFAULT_PREFETCH_SKIP`).
+  - `DirectoryTree::with_prefetch_limit(n)` and
+    `DirectoryTree::with_prefetch_skip(iter)` builder methods.
+  - `DirectoryTree::prefetching_paths() -> &HashSet<PathBuf>` accessor.
+  - `on_loaded` Step 7: after a **user-initiated** scan, issues up to N
+    speculative `ScanRequest`s for not-yet-loaded, non-skip, within-depth
+    folder-children (S8.2). All requests in one wave share a single bumped
+    generation so each result independently passes the staleness check.
+  - **No cascade**: completions of prefetch scans remove the path from
+    `prefetching_paths` and return no further requests (S8.3).
+  - **Loads, does not expand**: `is_loaded` set; `is_expanded` unchanged;
+    subsequent user click is an instant Case-C no-op (S8.4).
+  - **User wins** (S8.7): `on_toggled` on a prefetching path removes it from
+    the registry and issues a fresh user-initiated scan; the in-flight
+    prefetch result arrives stale and is silently discarded.
+  - `use_scan_driver` fans prefetch requests out as concurrent `spawn`-ed
+    tasks; no driver API change needed for applications.
+  - 9 integration tests covering S8.1–S8.7 including case-insensitive skip
+    list, max_depth bound, and the user-wins race.
+
+[0.6.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.6.0

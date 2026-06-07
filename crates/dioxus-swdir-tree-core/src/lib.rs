@@ -54,7 +54,7 @@ pub mod selection;
 pub mod tree;
 
 pub use cache::{CachedScan, TreeCache};
-pub use config::{DisplayFilter, TreeConfig};
+pub use config::{DEFAULT_PREFETCH_SKIP, DisplayFilter, TreeConfig};
 pub use drag::{DragMsg, DragOutcome, DragState};
 pub use entry::LoadedEntry;
 pub use error::ScanIssue;

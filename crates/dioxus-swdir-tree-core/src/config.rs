@@ -37,11 +37,27 @@ impl DisplayFilter {
     }
 }
 
+/// Basenames skipped by the prefetch heuristic (S8.5) — directories
+/// whose names match any entry here (ASCII case-insensitive) are never
+/// speculatively scanned.
+///
+/// This list only affects **prefetch**; user-initiated scans always
+/// proceed regardless of the skip list.
+pub const DEFAULT_PREFETCH_SKIP: &[&str] = &[
+    ".git",
+    ".hg",
+    ".svn",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "target",
+    "build",
+    "dist",
+];
+
 /// Settings fixed at construction or mutated by the application at
 /// runtime.
-///
-/// Prefetch settings (`prefetch_per_parent`, `prefetch_skip`) arrive
-/// with RFC 009.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeConfig {
     /// The mounted root. The tree never navigates above it.
@@ -52,15 +68,28 @@ pub struct TreeConfig {
     /// `None` is unbounded. `Some(0)` means only the root's direct
     /// children are ever loaded.
     pub max_depth: Option<u32>,
+    /// How many direct folder-children to prefetch after each
+    /// user-initiated scan. `0` (the default) disables prefetch
+    /// entirely (S8.1).
+    pub prefetch_per_parent: u32,
+    /// Basenames to skip during prefetch target selection (S8.5).
+    /// Defaults to [`DEFAULT_PREFETCH_SKIP`].
+    pub prefetch_skip: Vec<String>,
 }
 
 impl TreeConfig {
-    /// Configuration with default filter and unbounded depth.
+    /// Configuration with default filter, unbounded depth, and
+    /// prefetch disabled.
     pub fn new(root_path: impl Into<PathBuf>) -> Self {
         Self {
             root_path: root_path.into(),
             filter: DisplayFilter::default(),
             max_depth: None,
+            prefetch_per_parent: 0,
+            prefetch_skip: DEFAULT_PREFETCH_SKIP
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
         }
     }
 }

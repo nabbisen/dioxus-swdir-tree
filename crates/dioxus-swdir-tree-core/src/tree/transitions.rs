@@ -4,6 +4,7 @@
 //! none of them block on I/O or spawn tasks.
 
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::cache::TreeCache;
@@ -29,6 +30,8 @@ impl DirectoryTree {
     /// - **C** — collapsed and already loaded: fast-path expand, no I/O.
     /// - **D** — collapsed and unloaded: bump the generation and request
     ///   a scan; or, beyond `max_depth`, mark loaded-empty instead.
+    ///   If the path is in `prefetching_paths`, the user-initiated scan
+    ///   supersedes the in-flight prefetch (S8.7).
     pub fn on_toggled(&mut self, path: &Path) -> Option<ScanRequest> {
         let depth = self.depth_of(path)?;
         let max_depth = self.config.max_depth;
@@ -42,6 +45,9 @@ impl DirectoryTree {
         // Case B — collapse.
         if node.is_expanded {
             node.is_expanded = false;
+            // A prefetch for this path (unlikely but possible) is
+            // superseded by the explicit user action.
+            self.prefetching_paths.remove(path);
             return None;
         }
 
@@ -61,6 +67,8 @@ impl DirectoryTree {
             node.children.clear();
             return None;
         }
+        // User action supersedes any in-flight prefetch for this path (S8.7).
+        self.prefetching_paths.remove(path);
         node.is_expanded = true;
         self.generation = self.generation.wrapping_add(1);
         Some(ScanRequest {
@@ -78,13 +86,11 @@ impl DirectoryTree {
     /// for paths no longer in the tree — are discarded silently, leaving
     /// the state bit-identical.
     ///
-    /// On acceptance: the node's children are rebuilt from the filtered
-    /// entry list (path-matching the previous children so existing
-    /// subtrees, expansion, and loaded flags survive a re-merge), the
-    /// raw unfiltered entries are cached for zero-I/O filter switching,
-    /// and the node is marked loaded. A failed scan stores the
-    /// [`crate::ScanIssue`] on the node with an empty child list.
-    /// Selection flags are re-synced after every accepted merge (S6.4).
+    /// On acceptance the node is rebuilt and, if prefetch is enabled and
+    /// this was a **user-initiated** scan (path not in `prefetching_paths`),
+    /// up to `config.prefetch_per_parent` follow-up `ScanRequest`s are
+    /// returned in `LoadedOutcome::prefetch_requests` (S8.2). Completions
+    /// of prefetch scans never trigger further waves (S8.3).
     pub fn on_loaded(&mut self, payload: LoadPayload) -> LoadedOutcome {
         // Step 1 — staleness check.
         if payload.generation != self.generation {
@@ -103,7 +109,8 @@ impl DirectoryTree {
                 rebuild_children(node, &entries, filter);
                 node.error = None;
                 node.is_loaded = true;
-                self.cache.insert(payload.path, payload.generation, entries);
+                self.cache
+                    .insert(payload.path.clone(), payload.generation, entries);
             }
             Err(issue) => {
                 node.children.clear();
@@ -112,63 +119,90 @@ impl DirectoryTree {
             }
         }
 
-        // Step 5 — selection-flag sync (RFC 004).
+        // Step 5 — selection-flag sync.
         selection::sync_flags(&mut self.root, &self.selected_paths);
-        // Search recompute (RFC 010) and prefetch cascade (RFC 009)
-        // hook in here when those features land.
-        LoadedOutcome::accepted()
-    }
+        // Step 6 — search recompute (RFC 010) hooks in here.
 
-    /// React to a selection gesture on `path`.
-    ///
-    /// All modes set `active_path` and end with a flag sync. No I/O is
-    /// performed; no `ScanRequest` is returned. The caller must issue
-    /// a separate `on_toggled` to expand the directory if needed.
-    ///
-    /// `is_dir` is required by future RFC 006 to distinguish file and
-    /// folder icons; the core does not gate behaviour on it here.
-    pub fn on_selected(&mut self, path: &Path, _is_dir: bool, mode: SelectionMode) {
-        let path = path.to_path_buf();
-        self.active_path = Some(path.clone());
-
-        match mode {
-            SelectionMode::Replace => {
-                self.selected_paths = vec![path.clone()];
-                self.anchor_path = Some(path);
-            }
-
-            SelectionMode::Toggle => {
-                if let Some(pos) = self.selected_paths.iter().position(|p| p == &path) {
-                    self.selected_paths.remove(pos);
-                } else {
-                    self.selected_paths.push(path.clone());
-                }
-                self.anchor_path = Some(path);
-            }
-
-            SelectionMode::ExtendRange => {
-                let Some(anchor) = self.anchor_path.clone() else {
-                    // No anchor: behave as Replace.
-                    self.selected_paths = vec![path.clone()];
-                    self.anchor_path = Some(path);
-                    selection::sync_flags(&mut self.root, &self.selected_paths);
-                    return;
-                };
-                let rows = self.visible_rows();
-                let anchor_idx = rows.iter().position(|(n, _)| n.path == anchor);
-                let target_idx = rows.iter().position(|(n, _)| n.path == path);
-                if let (Some(a), Some(t)) = (anchor_idx, target_idx) {
-                    let (lo, hi) = if a <= t { (a, t) } else { (t, a) };
-                    self.selected_paths =
-                        rows[lo..=hi].iter().map(|(n, _)| n.path.clone()).collect();
-                }
-                // anchor_path intentionally unchanged (S6.3).
-            }
+        // Step 7 — prefetch cascade check.
+        if self.prefetching_paths.remove(&payload.path) {
+            // This was a prefetch completion: no further cascade (S8.3).
+            return LoadedOutcome::accepted();
         }
 
-        selection::sync_flags(&mut self.root, &self.selected_paths);
+        // User-initiated scan: compute prefetch targets (S8.2).
+        let prefetch_requests = compute_prefetch(self, &payload.path, payload.depth);
+        LoadedOutcome {
+            accepted: true,
+            prefetch_requests,
+        }
     }
 }
+
+/// Compute up to `config.prefetch_per_parent` prefetch scan requests for
+/// folder-children of `parent_path` that are not yet loaded, not in the skip
+/// list, and within `max_depth` (S8.2, S8.5, S8.6).
+///
+/// Each selected child path is inserted into `tree.prefetching_paths` and
+/// assigned a fresh generation.
+fn compute_prefetch(
+    tree: &mut DirectoryTree,
+    parent_path: &Path,
+    parent_depth: u32,
+) -> Vec<ScanRequest> {
+    if tree.config.prefetch_per_parent == 0 {
+        return Vec::new();
+    }
+    let max_prefetch = tree.config.prefetch_per_parent as usize;
+    let max_depth = tree.config.max_depth;
+    let child_depth = parent_depth + 1;
+
+    // Collect candidate paths without holding a borrow on `tree.root`.
+    let candidates: Vec<PathBuf> = tree
+        .root
+        .find(parent_path)
+        .map(|node| {
+            node.children
+                .iter()
+                .filter(|child| {
+                    child.is_dir
+                        && !child.is_loaded
+                        && max_depth.is_none_or(|max| child_depth <= max)
+                        && !is_prefetch_skip(child.file_name(), &tree.config.prefetch_skip)
+                })
+                .take(max_prefetch)
+                .map(|child| child.path.clone())
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if candidates.is_empty() {
+        return Vec::new();
+    }
+    // Bump the generation ONCE for the entire wave so all N scans
+    // carry the same generation tag and the staleness check admits
+    // each result independently (S8.2, S8.3).
+    tree.generation = tree.generation.wrapping_add(1);
+    let wave_gen = tree.generation;
+
+    let mut requests = Vec::with_capacity(candidates.len());
+    for path in candidates {
+        tree.prefetching_paths.insert(path.clone());
+        requests.push(ScanRequest {
+            path,
+            generation: wave_gen,
+            depth: child_depth,
+        });
+    }
+    requests
+}
+
+/// `true` iff `name` matches an entry in `skip` (ASCII case-insensitive, S8.5).
+fn is_prefetch_skip(name: &OsStr, skip: &[String]) -> bool {
+    let lower = name.to_string_lossy().to_ascii_lowercase();
+    skip.iter().any(|s| s.to_ascii_lowercase() == lower)
+}
+
+// ── Rebuild helpers (used by on_loaded and set_filter) ────────────────────────
 
 /// Rebuild `node.children` from a raw entry list under `filter`,
 /// preserving any existing child subtree whose path still appears:
@@ -213,11 +247,6 @@ pub(crate) fn refresh_from_cache(node: &mut TreeNode, cache: &TreeCache, filter:
 
 impl DirectoryTree {
     /// React to a drag-and-drop gesture message.
-    ///
-    /// Returns a [`DragOutcome`] describing any side effect the host must
-    /// handle: deferred click selection or a completed drop. The tree
-    /// itself is mutated synchronously; the host performs any
-    /// filesystem operations.
     pub fn on_drag_msg(&mut self, msg: DragMsg) -> DragOutcome {
         match msg {
             DragMsg::Pressed { path, is_dir } => {
@@ -239,7 +268,6 @@ impl DirectoryTree {
                 if self.drag.is_none() {
                     return DragOutcome::None;
                 }
-                // Clone sources so we can release the drag borrow.
                 let sources = self.drag.as_ref().unwrap().sources.clone();
                 let is_dir = self.find(&path).map(|n| n.is_dir).unwrap_or(false);
                 let valid = is_valid_target(&path, &sources, is_dir);
@@ -261,13 +289,11 @@ impl DirectoryTree {
                     return DragOutcome::None;
                 };
                 if path == drag.started_at {
-                    // Same row: interpret as a click (S7.2).
                     DragOutcome::Clicked {
                         path,
                         is_dir: drag.started_is_dir,
                     }
                 } else {
-                    // Genuine drop.
                     DragOutcome::Completed {
                         sources: drag.sources,
                         destination: path,
@@ -280,5 +306,50 @@ impl DirectoryTree {
                 DragOutcome::None
             }
         }
+    }
+}
+
+// ── Selection transition ──────────────────────────────────────────────────────
+
+impl DirectoryTree {
+    /// React to a selection gesture on `path`.
+    pub fn on_selected(&mut self, path: &Path, _is_dir: bool, mode: SelectionMode) {
+        let path = path.to_path_buf();
+        self.active_path = Some(path.clone());
+
+        match mode {
+            SelectionMode::Replace => {
+                self.selected_paths = vec![path.clone()];
+                self.anchor_path = Some(path);
+            }
+
+            SelectionMode::Toggle => {
+                if let Some(pos) = self.selected_paths.iter().position(|p| p == &path) {
+                    self.selected_paths.remove(pos);
+                } else {
+                    self.selected_paths.push(path.clone());
+                }
+                self.anchor_path = Some(path);
+            }
+
+            SelectionMode::ExtendRange => {
+                let Some(anchor) = self.anchor_path.clone() else {
+                    self.selected_paths = vec![path.clone()];
+                    self.anchor_path = Some(path);
+                    selection::sync_flags(&mut self.root, &self.selected_paths);
+                    return;
+                };
+                let rows = self.visible_rows();
+                let anchor_idx = rows.iter().position(|(n, _)| n.path == anchor);
+                let target_idx = rows.iter().position(|(n, _)| n.path == path);
+                if let (Some(a), Some(t)) = (anchor_idx, target_idx) {
+                    let (lo, hi) = if a <= t { (a, t) } else { (t, a) };
+                    self.selected_paths =
+                        rows[lo..=hi].iter().map(|(n, _)| n.path.clone()).collect();
+                }
+            }
+        }
+
+        selection::sync_flags(&mut self.root, &self.selected_paths);
     }
 }

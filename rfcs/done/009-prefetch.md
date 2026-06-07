@@ -1,6 +1,6 @@
 # RFC 009 — Parallel pre-expansion (prefetch)
 
-**Status.** Proposed
+**Status.** Implemented (v0.6.0)
 **Tracks.** Feature 8 (`feature-specs.md` §8); prefetch-state
 section of `data-model.md`.
 **Touches.** `crates/dioxus-swdir-tree-core/src/` — `config.rs`

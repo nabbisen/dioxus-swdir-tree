@@ -12,7 +12,7 @@ the cross-framework test oracle.
 | **0.3.0** | 005 async scanning, 006 Dioxus view component | F5 pluggable `ScanExecutor`; `DirectoryTreeView` (first visual release) | **Shipped** |
 | **0.4.0** | 007 keyboard navigation | F4 | **Shipped** |
 | **0.5.0** | 008 drag & drop | F7 | **Shipped** |
-| 0.6.0 | 009 prefetch | F8 | Proposed |
+| **0.6.0** | 009 prefetch | F8 | **Shipped** |
 | 0.7.0 | 010 incremental search, 011 icon themes | F9, F10 — feature parity with `iced-swdir-tree` 0.7 | Proposed |
 | 1.0.0 | API freeze review | — | **Gated: published only with explicit confirmation from the project owner. Never auto-released.** |
 
