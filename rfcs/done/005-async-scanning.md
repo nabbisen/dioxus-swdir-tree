@@ -1,6 +1,6 @@
 # RFC 005 — Async scanning: executor seam and coroutine wiring
 
-**Status.** Proposed
+**Status.** Implemented (v0.3.0)
 **Tracks.** Feature 5 (pluggable scan executor) from
 `feature-specs.md` §5; the async-scanning section of
 `porting-to-dioxus.md`; core principle 1 (non-blocking I/O).

@@ -5,7 +5,7 @@
 //! changes, and re-merges transparently.
 //!
 //! Per-node [`crate::TreeNode::is_selected`] flags are derived view
-//! hints re-synced after every mutation; see [`sync_flags`].
+//! hints re-synced after every mutation by the `sync_flags` helper.
 
 use std::collections::HashSet;
 use std::path::PathBuf;

@@ -53,3 +53,29 @@ First release: the framework-free core state machine (RFCs 001–003).
     filtered out or not yet loaded).
 
 [0.2.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.2.0
+
+## [0.3.0] - 2026-06-07
+
+### Added
+
+- **Pluggable async scanning** (Feature 5, RFC 005):
+  - `ScanExecutor` trait — object-safe (`Arc<dyn ScanExecutor>`), one
+    `spawn_blocking(job)` per `ScanRequest` (S5.2).
+  - `ThreadExecutor` (default, S5.3) — one OS thread per scan via a
+    `Mutex`/`Waker`-based future with no external runtime dependency.
+  - `ScanJob` and `ScanFuture` type aliases.
+- **Dioxus view component** (RFC 006):
+  - `dioxus-swdir-tree` now depends on `dioxus ^0.7` (minimal feature
+    set — no platform renderer in the library).
+  - `DirectoryTreeView` component — flat row list from `visible_rows()`,
+    caret + icon + label per row, `dx-swdir-*` CSS class names.
+  - `use_scan_driver` hook — wraps `use_coroutine`; wires `ScanRequest`s
+    from event handlers through the executor and back into the signal.
+  - `DirectoryTreeEvent` enum (`Toggled`, `Selected`) — click-to-select
+    placeholder with `SelectionMode::Replace` until RFC 007/008.
+  - `default-style` feature (on by default) — injects a minimal baseline
+    stylesheet; disable for full theming control.
+  - `examples/explorer` — standalone desktop app (not a workspace member;
+    requires `dioxus` with `features = ["desktop"]`).
+
+[0.3.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.3.0

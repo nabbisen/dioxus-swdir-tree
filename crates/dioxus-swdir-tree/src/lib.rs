@@ -1,39 +1,74 @@
 //! # dioxus-swdir-tree
 //!
-//! A directory-tree explorer widget for [Dioxus](https://dioxuslabs.com)
-//! GUI apps, built on [`swdir`](https://crates.io/crates/swdir).
+//! A lazy-loading directory-tree explorer widget for
+//! [Dioxus](https://dioxuslabs.com) GUI apps, built on
+//! [`swdir`](https://crates.io/crates/swdir).
 //!
-//! ## Status: v0.1 — core only
+//! ## Architecture
 //!
-//! This release ships the **framework-free state machine** (re-exported
-//! from [`dioxus_swdir_tree_core`]): lazy one-level-per-click loading,
-//! display filters, the generation-tagged stale-scan protocol, and the
-//! `visible_rows()` flat row model that every later feature builds on.
+//! ```text
+//!                ┌─────────────────────────────┐
+//!   Signal       │    DirectoryTreeView         │  renders
+//!  ─────────────►│    (this crate)              │──────────► HTML rows
+//!                │                              │
+//!  on_event ◄────│    EventHandler              │  user gestures
+//!                └──────────────┬──────────────┘
+//!                               │ Toggled / Selected
+//!                               ▼
+//!                ┌─────────────────────────────┐
+//!   Signal.write │  DirectoryTree               │  pure state machine
+//!  ─────────────►│  (dioxus-swdir-tree-core)    │
+//!                └──────────────┬──────────────┘
+//!                               │ ScanRequest (data)
+//!                               ▼
+//!                ┌─────────────────────────────┐
+//!                │   use_scan_driver            │  coroutine
+//!                │   ScanExecutor / Thread      │  executes scan
+//!                └─────────────────────────────┘
+//! ```
 //!
-//! The `DirectoryTreeView` Dioxus component lands in **v0.3.0**
-//! (RFC 006), together with pluggable async scanning (RFC 005). Until
-//! then this crate adds no Dioxus dependency — you can already drive the
-//! tree from any event loop:
+//! ## Quick start
 //!
 //! ```no_run
-//! use dioxus_swdir_tree::{DirectoryTree, scan};
+//! # use dioxus::prelude::*;
+//! use dioxus_swdir_tree::{DirectoryTreeView, DirectoryTreeEvent, use_scan_driver};
+//! use dioxus_swdir_tree_core::{DirectoryTree, ThreadExecutor};
+//! use std::sync::Arc;
 //!
-//! let mut tree = DirectoryTree::new("/home/me/projects");
+//! fn app() -> Element {
+//!     let mut tree = use_signal(|| DirectoryTree::new("/home"));
+//!     let scans = use_scan_driver(tree, Arc::new(ThreadExecutor));
 //!
-//! // A click on a collapsed, unloaded directory…
-//! if let Some(request) = tree.on_toggled(std::path::Path::new("/home/me/projects")) {
-//!     // …produces a scan request. Run it off the UI thread, then merge:
-//!     let payload = scan::run(&request); // blocking — worker thread!
-//!     let outcome = tree.on_loaded(payload);
-//!     assert!(outcome.accepted);
-//! }
+//!     let on_event = move |ev: DirectoryTreeEvent| match ev {
+//!         DirectoryTreeEvent::Toggled(path) => {
+//!             if let Some(req) = tree.write().on_toggled(&path) {
+//!                 scans.send(req);
+//!             }
+//!         }
+//!         DirectoryTreeEvent::Selected { path, is_dir, mode } => {
+//!             tree.write().on_selected(&path, is_dir, mode);
+//!         }
+//!     };
 //!
-//! for (node, depth) in tree.visible_rows() {
-//!     println!("{}{}", "  ".repeat(depth as usize), node.file_name().display());
+//!     rsx! { DirectoryTreeView { tree, on_event } }
 //! }
 //! ```
 //!
-//! See the repository `ROADMAP.md` for the feature schedule and the
-//! `rfcs/` directory for the full design record.
+//! The `default-style` feature (on by default) injects a minimal
+//! `dx-swdir-*` stylesheet; disable it to theme from scratch.
 
+pub mod driver;
+pub mod event;
+pub mod style;
+
+mod row;
+mod view;
+
+// Re-export the component and hook at the crate root for ergonomics.
+pub use driver::use_scan_driver;
+pub use event::DirectoryTreeEvent;
+pub use view::DirectoryTreeView;
+
+// Re-export everything from core so application code can depend on this
+// crate alone.
 pub use dioxus_swdir_tree_core::*;

@@ -1,6 +1,6 @@
 # RFC 006 — Dioxus view component
 
-**Status.** Proposed
+**Status.** Implemented (v0.3.0)
 **Tracks.** The rendering layer: `porting-to-dioxus.md`
 (rendering, conceptual mapping) and the view-side half of the
 responsibility split in `core-design.md`.

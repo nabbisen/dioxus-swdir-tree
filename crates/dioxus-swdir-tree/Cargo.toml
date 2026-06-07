@@ -1,6 +1,6 @@
 [package]
 name = "dioxus-swdir-tree"
-description = "Directory-tree explorer widget for Dioxus: lazy loading, display filters, selection, keyboard navigation, drag & drop. v0.1 ships the framework-free core; the Dioxus component arrives in v0.3 (RFC 006)."
+description = "Directory-tree explorer widget for Dioxus: lazy loading, display filters, selection, keyboard navigation, drag & drop."
 readme = "README.md"
 version.workspace = true
 edition.workspace = true
@@ -11,8 +11,16 @@ repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = ["default-style"]
+# Bundle a small baseline stylesheet (dx-swdir-* class names).
+# Disable to take full control of theming.
+default-style = []
+
 [dependencies]
 dioxus-swdir-tree-core = { workspace = true }
+dioxus = { version = "0.7", default-features = false, features = ["minimal"] }
+futures-util = "0.3"
 
 [lints]
 workspace = true

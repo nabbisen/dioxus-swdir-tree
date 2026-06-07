@@ -1,0 +1,18 @@
+[package]
+name = "explorer"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+authors = ["nabbisen"]
+description = "Desktop file-explorer example for dioxus-swdir-tree."
+publish = false
+
+[dependencies]
+dioxus = { version = "0.7", features = ["desktop"] }
+dioxus-swdir-tree = { path = "../../crates/dioxus-swdir-tree" }
+
+# Mark as a binary, not a library.
+[[bin]]
+name = "explorer"
+path = "src/main.rs"

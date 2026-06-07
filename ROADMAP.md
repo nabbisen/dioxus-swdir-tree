@@ -9,7 +9,7 @@ the cross-framework test oracle.
 |---|---|---|---|
 | **0.1.0** | 001 architecture, 002 core state machine, 003 display filters | F1 lazy loading, F2 display filters | **Shipped** |
 | **0.2.0** | 004 selection model | F3 single selection, F6 multi-selection | **Shipped** |
-| 0.3.0 | 005 async scanning, 006 Dioxus view component | F5 pluggable `ScanExecutor`; `DirectoryTreeView` (first visual release) | Proposed |
+| **0.3.0** | 005 async scanning, 006 Dioxus view component | F5 pluggable `ScanExecutor`; `DirectoryTreeView` (first visual release) | **Shipped** |
 | 0.4.0 | 007 keyboard navigation | F4 | Proposed |
 | 0.5.0 | 008 drag & drop | F7 | Proposed |
 | 0.6.0 | 009 prefetch | F8 | Proposed |

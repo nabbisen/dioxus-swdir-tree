@@ -62,5 +62,7 @@ pub use scan::{LoadPayload, LoadedOutcome, ScanRequest};
 pub use selection::SelectionMode;
 pub use tree::DirectoryTree;
 
+pub mod executor;
 #[cfg(test)]
 mod tests;
+pub use executor::{ScanExecutor, ScanFuture, ScanJob, ThreadExecutor};
