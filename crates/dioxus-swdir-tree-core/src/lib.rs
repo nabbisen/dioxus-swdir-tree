@@ -69,6 +69,7 @@ pub use icon::{IconRole, IconSpec, IconTheme, UnicodeTheme};
 pub use icon::{LUCIDE_FONT_BYTES, LucideTheme};
 pub use item_event::ItemTreeEvent;
 pub use item_tree::ItemSearchState;
+pub use item_tree::{DropPosition, ItemDragMsg, ItemDragOutcome};
 pub use item_tree::{ItemNode, ItemTree, NodeId, VisibleItem};
 pub use keyboard::{Modifiers, TreeKey, handle_key};
 pub use node::TreeNode;

@@ -20,6 +20,7 @@ The folder an RFC lives in is the source of truth for its state.
 | [010](done/010-incremental-search.md) | Incremental search | v0.7.0 |
 | [011](done/011-icon-themes.md) | Icon themes | v0.7.0 |
 | [012](done/012-generic-item-tree.md) | Generic item tree | v0.8.0 |
+| [013](done/013-item-tree-drag-and-drop.md) | ItemTree drag-and-drop | v0.9.0 |
 
 ## proposed/
 

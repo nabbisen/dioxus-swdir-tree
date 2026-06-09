@@ -14,6 +14,8 @@ the cross-framework test oracle.
 | **0.5.0** | 008 drag & drop | F7 | **Shipped** |
 | **0.6.0** | 009 prefetch | F8 | **Shipped** |
 | **0.7.0** | 010 incremental search, 011 icon themes | F9, F10 — feature parity with `iced-swdir-tree` 0.7 | **Shipped** |
+| **0.8.0** | 012 generic item tree | F11 `ItemTree<T>` — parity with `iced-swdir-tree` 0.8 | **Shipped** |
+| **0.9.0** | 013 ItemTree drag-and-drop | F11 drag/drop — parity with `iced-swdir-tree` 0.9 | **Shipped** |
 | 1.0.0 | API freeze review | — | **Gated: published only with explicit confirmation from the project owner. Never auto-released.** |
 
 Out of scope before 1.0: web/WASM scan executors, file operations (move,

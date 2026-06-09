@@ -75,6 +75,18 @@ pub const DEFAULT_CSS: &str = r#"
     outline-offset: -2px;
     background: rgba(66, 133, 244, 0.12);
 }
+.dx-swdir-drop-strip {
+    height: 6px;
+    width: 100%;
+}
+.dx-swdir-drop-strip--active {
+    background: linear-gradient(rgba(66, 133, 244, 0) 2px, rgba(66, 133, 244, 0.9) 2px, rgba(66, 133, 244, 0.9) 4px, rgba(66, 133, 244, 0) 4px);
+}
+.dx-swdir-drop-into {
+    outline: 2px solid rgba(52, 168, 83, 0.8);
+    outline-offset: -2px;
+    background: rgba(52, 168, 83, 0.12);
+}
 .dx-swdir-caret {
     display: inline-block;
     width: 1em;

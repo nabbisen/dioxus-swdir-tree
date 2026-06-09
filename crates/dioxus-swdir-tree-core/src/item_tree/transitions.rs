@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::item_event::ItemTreeEvent;
+use crate::item_tree::drag::{ItemDragMsg, ItemDragOutcome, ItemDragState, is_valid_drop};
 use crate::item_tree::node::{InternalItem, ItemNode, NodeId};
 use crate::item_tree::search::{ItemSearchState, walk_for_search_item};
 use crate::item_tree::{DisplayFn, ItemTree};
@@ -200,8 +201,14 @@ impl<T: Clone + std::fmt::Debug + Send + Sync + 'static> ItemTree<T> {
                 }
             }
 
-            // ── Escape — unbound (no drag in ItemTree) ───────────────────────
-            (TreeKey::Escape, _) => None,
+            // ── Escape — cancels drag if active; unbound otherwise (S11.13)
+            (TreeKey::Escape, _) => {
+                if self.drag.is_some() {
+                    Some(ItemTreeEvent::Drag(ItemDragMsg::Cancelled))
+                } else {
+                    None
+                }
+            }
 
             _ => None,
         }
@@ -302,4 +309,103 @@ fn sync_flags<T>(store: &mut HashMap<NodeId, InternalItem<T>>, selected_ids: &[N
 
 fn selected(id: NodeId, mode: SelectionMode) -> ItemTreeEvent {
     ItemTreeEvent::Selected(id, mode)
+}
+
+// ── Drag-and-drop transitions (RFC 013) ───────────────────────────────────────
+
+impl<T: Clone + std::fmt::Debug + Send + Sync + 'static> ItemTree<T> {
+    /// Drive the drag state machine (S11.9–S11.16).
+    ///
+    /// Returns an [`ItemDragOutcome`] describing the side effect the host must
+    /// handle: a deferred click selection, or a completed drop intent. The
+    /// widget mutates **no** node structure — the host rebuilds its model from
+    /// `Completed { sources, target, position }` and calls
+    /// [`Self::set_tree`].
+    ///
+    /// All variants are no-ops when drag-and-drop is disabled or no drag is in
+    /// progress, so stray or out-of-order messages are harmless.
+    pub fn on_drag_msg(&mut self, msg: ItemDragMsg) -> ItemDragOutcome {
+        if !self.dnd_enabled {
+            return ItemDragOutcome::None;
+        }
+        match msg {
+            ItemDragMsg::Pressed(id) => {
+                let sources = self.sources_for_drag(id);
+                self.drag = Some(ItemDragState {
+                    sources,
+                    primary: id,
+                    hover: None,
+                });
+                ItemDragOutcome::None
+            }
+
+            ItemDragMsg::Entered(target, position) => {
+                if self.drag.is_none() {
+                    return ItemDragOutcome::None;
+                }
+                let sources = self.drag.as_ref().unwrap().sources.clone();
+                let valid = is_valid_drop(&self.store, &sources, target, position);
+                self.drag.as_mut().unwrap().hover = if valid {
+                    Some((target, position))
+                } else {
+                    None
+                };
+                ItemDragOutcome::None
+            }
+
+            ItemDragMsg::Exited(target, position) => {
+                if let Some(d) = self.drag.as_mut()
+                    && d.hover == Some((target, position))
+                {
+                    d.hover = None;
+                }
+                ItemDragOutcome::None
+            }
+
+            ItemDragMsg::Released(id, _position) => {
+                let Some(d) = self.drag.take() else {
+                    return ItemDragOutcome::None;
+                };
+                // Released on the press row → a click (S11.11). Position is
+                // ignored; the drop target is the stored hover.
+                if id == d.primary {
+                    return ItemDragOutcome::Clicked(d.primary);
+                }
+                if let Some((target, position)) = d.hover {
+                    return ItemDragOutcome::Completed {
+                        sources: d.sources,
+                        target,
+                        position,
+                    };
+                }
+                ItemDragOutcome::None
+            }
+
+            ItemDragMsg::Cancelled => {
+                self.drag = None;
+                ItemDragOutcome::None
+            }
+        }
+    }
+
+    /// The source set for a drag beginning on `id`: the whole selection (in
+    /// tree pre-order) if `id` is selected, otherwise just `id` (S11.10).
+    fn sources_for_drag(&self, id: NodeId) -> Vec<NodeId> {
+        let set: HashSet<NodeId> = if self.selected_ids.contains(&id) {
+            self.selected_ids.iter().copied().collect()
+        } else {
+            std::iter::once(id).collect()
+        };
+        let sources: Vec<NodeId> = self
+            .order
+            .iter()
+            .copied()
+            .filter(|i| set.contains(i))
+            .collect();
+        if sources.is_empty() {
+            vec![id]
+        } else {
+            sources
+        }
+    }
 }

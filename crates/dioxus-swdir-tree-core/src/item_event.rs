@@ -1,6 +1,6 @@
 //! Event type for [`crate::ItemTree`].
 
-use crate::item_tree::NodeId;
+use crate::item_tree::{ItemDragMsg, NodeId};
 use crate::selection::SelectionMode;
 
 /// An event emitted by [`crate::ItemTree::handle_key`] or by the view
@@ -17,15 +17,20 @@ use crate::selection::SelectionMode;
 ///     match ev {
 ///         ItemTreeEvent::Toggled(id) => tree.on_toggled(id),
 ///         ItemTreeEvent::Selected(id, mode) => tree.on_selected(id, mode),
+///         ItemTreeEvent::Drag(msg) => { tree.on_drag_msg(msg); }
 ///     }
 /// }
 /// ```
 ///
-/// Drag-and-drop is deliberately absent (deferred to a later RFC).
+/// `Drag` carries an opaque [`ItemDragMsg`]; the host routes it back through
+/// [`crate::ItemTree::on_drag_msg`] and acts on the returned
+/// [`crate::item_tree::ItemDragOutcome`] (RFC 013).
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemTreeEvent {
     /// Expand or collapse the node.
     Toggled(NodeId),
     /// Change the selection.
     Selected(NodeId, SelectionMode),
+    /// A drag-and-drop gesture (only emitted when drag-and-drop is enabled).
+    Drag(ItemDragMsg),
 }

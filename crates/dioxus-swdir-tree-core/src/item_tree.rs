@@ -34,13 +34,16 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 
+pub mod drag;
 pub mod node;
 pub(crate) mod search;
 pub(crate) mod transitions;
 
+pub use drag::{DropPosition, ItemDragMsg, ItemDragOutcome};
 pub use node::{ItemNode, NodeId, VisibleItem};
 pub use search::ItemSearchState;
 
+use drag::ItemDragState;
 use node::InternalItem;
 
 /// Type alias for the display function stored on [`ItemTree`].
@@ -76,6 +79,12 @@ pub struct ItemTree<T: Clone + fmt::Debug + Send + Sync + 'static> {
     /// Converts `T` to a display string for rendering and search.
     /// If `None`, search is disabled and `VisibleItem::label` is empty.
     pub(crate) display_fn: Option<DisplayFn<T>>,
+
+    // ── Drag-and-drop (RFC 013) ────────────────────────────────────────────
+    /// Whether drag-and-drop is enabled (opt-in, S11.9).
+    pub(crate) dnd_enabled: bool,
+    /// Active drag session, or `None` when no drag is in progress.
+    pub(crate) drag: Option<ItemDragState>,
 }
 
 // ── Manual trait impls (can't derive because of Arc<dyn Fn>) ─────────────────
@@ -91,6 +100,8 @@ impl<T: Clone + fmt::Debug + Send + Sync + 'static> Clone for ItemTree<T> {
             anchor_id: self.anchor_id,
             search: self.search.clone(),
             display_fn: self.display_fn.clone(),
+            dnd_enabled: self.dnd_enabled,
+            drag: self.drag.clone(),
         }
     }
 }
@@ -103,6 +114,8 @@ impl<T: Clone + fmt::Debug + Send + Sync + 'static> fmt::Debug for ItemTree<T> {
             .field("selected_ids", &self.selected_ids)
             .field("active_id", &self.active_id)
             .field("search", &self.search.as_ref().map(|s| &s.query))
+            .field("dnd_enabled", &self.dnd_enabled)
+            .field("dragging", &self.drag.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -121,6 +134,8 @@ impl<T: Clone + fmt::Debug + Send + Sync + 'static> ItemTree<T> {
             anchor_id: None,
             search: None,
             display_fn: None,
+            dnd_enabled: false,
+            drag: None,
         }
     }
 
@@ -130,6 +145,13 @@ impl<T: Clone + fmt::Debug + Send + Sync + 'static> ItemTree<T> {
     /// is a no-op and all [`VisibleItem::label`]s are empty.
     pub fn with_display(mut self, f: impl Fn(&T) -> String + Send + Sync + 'static) -> Self {
         self.display_fn = Some(Arc::new(f));
+        self
+    }
+
+    /// Builder: enable drag-and-drop reorder/nest (opt-in, S11.9).
+    /// Off by default; when disabled, mouse press selects directly.
+    pub fn with_drag_and_drop(mut self, enabled: bool) -> Self {
+        self.dnd_enabled = enabled;
         self
     }
 }
@@ -194,6 +216,26 @@ impl<T: Clone + fmt::Debug + Send + Sync + 'static> ItemTree<T> {
     /// Number of nodes currently in the tree.
     pub fn node_count(&self) -> usize {
         self.store.len()
+    }
+
+    /// Whether drag-and-drop is enabled (S11.9).
+    pub fn is_drag_and_drop_enabled(&self) -> bool {
+        self.dnd_enabled
+    }
+
+    /// Whether a drag is currently in progress.
+    pub fn is_dragging(&self) -> bool {
+        self.drag.is_some()
+    }
+
+    /// The nodes being dragged (pre-order), or an empty slice when idle.
+    pub fn drag_sources(&self) -> &[NodeId] {
+        self.drag.as_ref().map_or(&[], |d| d.sources.as_slice())
+    }
+
+    /// The current valid drop target and position, or `None`.
+    pub fn drop_target(&self) -> Option<(NodeId, DropPosition)> {
+        self.drag.as_ref().and_then(|d| d.hover)
     }
 
     /// Return whether the node identified by `id` is currently expanded.

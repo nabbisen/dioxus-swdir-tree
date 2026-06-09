@@ -20,8 +20,8 @@ icons = ["dioxus-swdir-tree-core/icons"]
 
 [dependencies]
 dioxus-swdir-tree-core = { workspace = true }
-dioxus = { version = "0.7", default-features = false, features = ["minimal"] }
-futures-util = "0.3"
+dioxus = { workspace = true, features = ["minimal"] }
+futures-util = { workspace = true }
 
 [lints]
 workspace = true

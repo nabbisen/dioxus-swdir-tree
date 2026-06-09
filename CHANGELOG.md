@@ -276,3 +276,50 @@ First release: the framework-free core state machine (RFCs 001–003).
   implementations can be compared for convergence.
 
 [0.8.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.8.0
+
+## [0.9.0] - 2026-06-09
+
+### Added
+
+- **ItemTree drag-and-drop** (Feature 11 continued, RFC 013), in parity with
+  `iced-swdir-tree` v0.9.0 RFC 002 / spec S11.9–S11.16:
+
+  **Core (`dioxus-swdir-tree-core`):**
+  - `DropPosition { Before, Into, After }` — reorder (sibling) and nest (child)
+    with unambiguous parent/index mapping (S11.15).
+  - `ItemDragMsg { Pressed, Entered, Exited, Released, Cancelled }` and
+    `ItemDragOutcome { None, Clicked(NodeId), Completed { sources, target, position } }`.
+  - `ItemTree::on_drag_msg(msg) -> ItemDragOutcome` drives the drag state
+    machine; the widget mutates no node structure — the host rebuilds its
+    model from `Completed` and calls `set_tree` (S11.14).
+  - Validity check (S11.12) over the live arena via native `parent_id` links —
+    O(depth) ancestor walk, no parent-map snapshot.
+  - Deferred selection (S11.11): release on the press row returns `Clicked`;
+    selection is never mutated on press.
+  - `with_drag_and_drop(bool)` builder (opt-in, off by default, S11.9);
+    accessors `is_drag_and_drop_enabled`, `is_dragging`, `drag_sources`,
+    `drop_target`.
+  - `Escape` cancels an active drag in `handle_key` (S11.13); drag survives
+    `set_search_query` (S11.16).
+  - `ItemTreeEvent::Drag(ItemDragMsg)` variant.
+  - 12 validity unit tests + 17 state-machine integration tests.
+
+  **View (`dioxus-swdir-tree`):**
+  - `ItemTreeView` renders three drop zones per row when DnD is enabled — a
+    Before strip, the body (Pressed + Into), and an After strip; plain
+    clickable rows when disabled (v0.8 behaviour unchanged).
+  - Active Before/After strips paint an insertion bar; the active Into body
+    paints a nest outline. Container-level mouse-up cancels a stray drag.
+
+### Notes
+
+- **`tree-nav-core` extraction declined** (informational). The ecosystem
+  decision is to share the *design* (the spec), not a crate: the navigation
+  logic is written against each project's data structure (our arena vs. iced's
+  nested tree) and the async models differ. `dioxus-swdir-tree-core` stays
+  self-contained. Mirrors `iced-swdir-tree`'s withdrawn RFC 003.
+- **No `NodeRemoved` event** (informational, unchanged). `set_tree`'s key-based
+  diffing silently drops disappeared ids; the application owns the before/after
+  diff. Matches RFC 012's out-of-scope decision and `iced-swdir-tree` RFC 001 [D4].
+
+[0.9.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.9.0

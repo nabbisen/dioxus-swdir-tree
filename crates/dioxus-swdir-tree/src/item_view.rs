@@ -4,7 +4,7 @@ use std::fmt;
 
 use dioxus::prelude::*;
 use dioxus_swdir_tree_core::keyboard::{Modifiers as CoreMods, TreeKey};
-use dioxus_swdir_tree_core::{ItemTree, ItemTreeEvent};
+use dioxus_swdir_tree_core::{ItemDragMsg, ItemTree, ItemTreeEvent};
 
 use crate::item_row::ItemTreeRow;
 use crate::row::{ArcTheme, default_theme};
@@ -71,6 +71,9 @@ pub fn ItemTreeView<T: Clone + fmt::Debug + Send + Sync + 'static>(
 
     let t = tree.read();
     let rows = t.visible_rows();
+    let dnd_enabled = t.is_drag_and_drop_enabled();
+    let hover = t.drop_target();
+    let is_dragging = t.is_dragging();
     drop(t);
 
     #[cfg(feature = "default-style")]
@@ -110,6 +113,11 @@ pub fn ItemTreeView<T: Clone + fmt::Debug + Send + Sync + 'static>(
             class: s::CLASS_TREE,
             tabindex: "0",
             onkeydown: on_keydown,
+            onmouseup: move |_| {
+                if is_dragging {
+                    on_event.call(ItemTreeEvent::Drag(ItemDragMsg::Cancelled));
+                }
+            },
 
             for row in rows {
                 ItemTreeRow {
@@ -117,6 +125,8 @@ pub fn ItemTreeView<T: Clone + fmt::Debug + Send + Sync + 'static>(
                     row,
                     on_event,
                     theme: theme.clone(),
+                    dnd_enabled,
+                    hover,
                 }
             }
         }
