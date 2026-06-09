@@ -69,11 +69,14 @@ pub mod driver;
 pub mod event;
 pub mod style;
 
+mod item_row;
+mod item_view;
 mod row;
 mod view;
 
 pub use driver::use_scan_driver;
 pub use event::DirectoryTreeEvent;
+pub use item_view::ItemTreeView;
 pub use row::{ArcTheme, default_theme};
 pub use view::DirectoryTreeView;
 

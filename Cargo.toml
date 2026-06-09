@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/dioxus-swdir-tree-core", "crates/dioxus-swdir-tree"]
 
 [workspace.package]
-version = "0.7.2"
+version = "0.8.0"
 edition = "2024"
 license = "Apache-2.0"
 authors = ["nabbisen"]
@@ -12,7 +12,7 @@ keywords = ["dioxus", "widget", "file-tree", "directory", "explorer"]
 categories = ["gui", "filesystem"]
 
 [workspace.dependencies]
-dioxus-swdir-tree-core = { version = "0.7.2", path = "crates/dioxus-swdir-tree-core" }
+dioxus-swdir-tree-core = { version = "0.8.0", path = "crates/dioxus-swdir-tree-core" }
 swdir = "0.11"
 
 [workspace.lints.clippy]

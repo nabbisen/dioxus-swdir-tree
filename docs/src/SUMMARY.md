@@ -5,7 +5,7 @@
 # For app developers (new users)
 
 - [Getting started](getting-started.md)
-- [Concepts: lazy loading & generations](concepts.md)
+- [Core concepts](concepts.md)
 
 # For integrators (intermediate)
 

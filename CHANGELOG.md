@@ -227,3 +227,52 @@ First release: the framework-free core state machine (RFCs 001–003).
   handling (clippy `collapsible_if`).
 
 [0.7.2]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.7.2
+
+## [0.8.0] - 2026-06-09
+
+### Added
+
+- **Generic item tree** (Feature 11, RFC 012), in parity with
+  `iced-swdir-tree` v0.8.0 RFC 001 / spec §11:
+
+  **Core (`dioxus-swdir-tree-core`):**
+  - `NodeId(pub u64)` — opaque, caller-assigned node identity.
+  - `ItemNode<T> { id, data, children }` — recursive caller input for
+    `set_tree`.
+  - `ItemTree<T: Clone + Debug + Send + Sync + 'static>` — in-memory tree
+    with `set_tree`, `on_toggled`, `on_selected`, `handle_key`, and
+    `set_search_query` / `clear_search`.
+  - **Key-based diffing** (S11.4/S11.5): `set_tree` snapshots
+    `NodeId → (is_expanded, is_selected)` before replacing the tree; state
+    is preserved for surviving keys regardless of position changes; disappeared
+    keys are silently dropped.
+  - `display_fn: Option<Arc<dyn Fn(&T) -> String>>` stored at construction
+    via `with_display(f)` — used for search and label rendering, avoiding the
+    `T: Display` split used in the iced reference.
+  - `VisibleItem` — pre-computed, owned row struct returned by `visible_rows()`,
+    suitable for direct use as Dioxus component props.
+  - `ItemTreeEvent { Toggled(NodeId), Selected(NodeId, SelectionMode) }` —
+    no drag variant (drag deferred, see below).
+  - `ItemSearchState` — incremental search state parallel to `SearchState`.
+  - `handle_key` on `ItemTree<T>` reuses `TreeKey`/`Modifiers` from
+    `keyboard.rs`; bindings are identical to `DirectoryTree`.
+
+  **View (`dioxus-swdir-tree`):**
+  - `ItemTreeView<T>` component — `Signal<ItemTree<T>>` + `EventHandler` +
+    optional `ArcTheme`; wires `onkeydown` using the existing key mapping.
+    No coroutine or scan driver needed.
+  - `ItemTreeRow` — click fires `Selected(Replace)`; Ctrl-click
+    `Toggle`; Shift-click `ExtendRange`; caret click `Toggled`.
+
+  **21 integration tests** covering S11.2–S11.8 (expand/collapse, key-based
+  diffing, position-change preservation, selection modes, ExtendRange, search).
+
+### Deferred
+
+- Drag-and-drop for `ItemTree<T>` — the `PathBuf::starts_with` ancestry check
+  is O(1); the `NodeId` equivalent requires O(depth) tree traversal, and
+  "drop between siblings" needs a distinct event shape. Deferred to a later RFC.
+- `tree-nav-core` extraction — deferred until both iced and Dioxus
+  implementations can be compared for convergence.
+
+[0.8.0]: https://github.com/nabbisen/dioxus-swdir-tree/releases/tag/v0.8.0

@@ -19,12 +19,12 @@ The folder an RFC lives in is the source of truth for its state.
 | [009](done/009-prefetch.md) | Prefetch | v0.6.0 |
 | [010](done/010-incremental-search.md) | Incremental search | v0.7.0 |
 | [011](done/011-icon-themes.md) | Icon themes | v0.7.0 |
+| [012](done/012-generic-item-tree.md) | Generic item tree | v0.8.0 |
 
 ## proposed/
 
-Empty — all eleven feature RFCs implemented. The next RFC will be the
-v1.0.0 API freeze review.
+Empty.
 
 ## archive/
 
-Empty — no RFC has been withdrawn or superseded.
+Empty.

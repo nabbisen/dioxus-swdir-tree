@@ -48,6 +48,8 @@ pub mod error;
 pub mod event;
 pub mod executor;
 pub mod icon;
+pub mod item_event;
+pub mod item_tree;
 pub mod keyboard;
 pub mod node;
 pub mod scan;
@@ -65,6 +67,9 @@ pub use executor::{ScanExecutor, ScanFuture, ScanJob, ThreadExecutor};
 pub use icon::{IconRole, IconSpec, IconTheme, UnicodeTheme};
 #[cfg(feature = "icons")]
 pub use icon::{LUCIDE_FONT_BYTES, LucideTheme};
+pub use item_event::ItemTreeEvent;
+pub use item_tree::ItemSearchState;
+pub use item_tree::{ItemNode, ItemTree, NodeId, VisibleItem};
 pub use keyboard::{Modifiers, TreeKey, handle_key};
 pub use node::TreeNode;
 pub use scan::{LoadPayload, LoadedOutcome, ScanRequest};
